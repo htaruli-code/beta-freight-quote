@@ -2158,7 +2158,7 @@ async function showAcceptRejectPage(quoteId, action, sig) {
 
     </div>`;
 
-  const r = await api({ action: 'processQuoteAction', quoteId, action, sig });
+  const r = await api({ action: 'processQuoteAction', quoteAction: action, quoteId, sig });
   const el = document.getElementById('arContent');
 
   if (r.success) {
