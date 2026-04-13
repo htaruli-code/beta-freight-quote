@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.0.0 | build: 202604091200 -->
+<!-- version: 2.0.1 | build: 202604131200 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -506,7 +506,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.0.0 — 202604091200';
+  out.textContent = 'v2.0.1 — 202604131200';
 }
 
 async function sendOTP() {
@@ -2453,8 +2453,27 @@ function bqRenderCarriers() {
 
 function bqAddCarrier() {
   if ((window._bqCarrierCount||1) >= (window._bqMaxCarriers||3)) return;
-  window._bqCarrierCount = (window._bqCarrierCount||1) + 1;
+  // Save current values before re-rendering so they are not lost
+  const currentCount = window._bqCarrierCount || 1;
+  const saved = [];
+  for (let i = 0; i < currentCount; i++) {
+    saved.push({
+      carrier: document.getElementById('bqCarrier_' +i)?.value || '',
+      rate:    document.getElementById('bqRate_'    +i)?.value || '',
+      transit: document.getElementById('bqTransit_' +i)?.value || '',
+      notes:   document.getElementById('bqNotes_'   +i)?.value || ''
+    });
+  }
+  window._bqCarrierCount = currentCount + 1;
   bqRenderCarriers();
+  // Restore saved values after render
+  saved.forEach((s, i) => {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    set('bqCarrier_' +i, s.carrier);
+    set('bqRate_'    +i, s.rate);
+    set('bqTransit_' +i, s.transit);
+    set('bqNotes_'   +i, s.notes);
+  });
 }
 
 function bqRemoveCarrier(idx) {
@@ -2505,8 +2524,32 @@ async function submitBrokerQuoteFromPage(requestId, brokerEmail, brokerCompany) 
   const btn = document.getElementById('bqBtn');
   btn.disabled = true; btn.textContent = 'Submitting…';
 
-  const r = await api({ action:'submitMultipleCarriers', requestId, brokerEmail,
+  // Try submitMultipleCarriers first (v2.0.0+).
+  // If backend returns "Unknown action" (old deployment not yet redeployed),
+  // fall back to legacy submitQuote for single-carrier submissions.
+  let r = await api({ action:'submitMultipleCarriers', requestId, brokerEmail,
     brokerCompany: co, carriers });
+
+  if (!r.success && r.error && r.error.toLowerCase().includes('unknown action')) {
+    // Backend not yet updated — fall back to single-carrier legacy action
+    if (carriers.length === 1) {
+      r = await api({
+        action:       'submitQuote',
+        requestId,
+        brokerEmail,
+        brokerCompany: co,
+        carrierName:   carriers[0].carrierName,
+        rate:          carriers[0].rate,
+        transitDays:   carriers[0].transitDays,
+        validUntil:    carriers[0].validUntil || '',
+        notes:         carriers[0].notes      || ''
+      });
+    } else {
+      // Multiple carriers but old backend — inform user
+      btn.disabled = false; btn.textContent = 'Submit Quote →';
+      return bqMsg('Your portal backend needs to be updated to support multiple carriers. Please contact your administrator, or submit one carrier at a time.');
+    }
+  }
 
   if (r.success) {
     document.getElementById('bqContent').innerHTML = `
