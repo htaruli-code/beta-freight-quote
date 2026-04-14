@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.1.0 | build: 202604131600 -->
+<!-- version: 2.2.0 | build: 202604131700 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -506,7 +506,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.1.0 — 202604131600';
+  out.textContent = 'v2.2.0 — 202604131700';
 }
 
 async function sendOTP() {
@@ -641,7 +641,7 @@ function buildSidebar(role) {
       </div>
       <div class="nav-section"><div class="nav-label">Account</div>
         <button class="nav-item" id="n-clientSettings" onclick="setNav(this,'clientSettings')"><span class="nav-icon">👤</span>My Profile</button>
-        <button class="nav-item" id="n-clientTeam" onclick="setNav(this,'clientSettings');setTimeout(()=>switchProfileTab('team'),150)"><span class="nav-icon">🏢</span>My Team</button>
+        <button class="nav-item" id="n-clientTeam" onclick="setNav(document.getElementById('n-clientSettings'),'clientSettings');setTimeout(()=>switchProfileTab('team'),150)"><span class="nav-icon">🏢</span>My Team</button>
       </div>`;
   }
 }
@@ -824,7 +824,10 @@ function renderBrokerSelector() {
     });
   }
   // Custom brokers section
-  h += '<div class="bs-title" style="margin-top:12px;">My Custom Vendors</div>';
+  const customVendorLabel = window._clientOrgId
+    ? 'Organisation Custom Vendors <span style="font-weight:400;color:var(--ink3);">(shared with your org)</span>'
+    : 'My Custom Vendors';
+  h += `<div class="bs-title" style="margin-top:12px;">${customVendorLabel}</div>`;
   if (!brokerSelectorData.custom.length) {
     h += '<div style="font-size:12px;color:var(--ink3);">No custom vendors added yet.</div>';
   } else {
@@ -1917,6 +1920,8 @@ async function loadClientSettings() {
   const r = await api({action:'getUserProfile', email:S.email, token:S.token});
   if (!r.success) { el.innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
   const p = r.profile || {};
+  window._clientOrgId   = p.orgId   || '';
+  window._clientOrgRole = p.orgRole || '';
   const tzOptions = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['America/Los_Angeles','America/Chicago','America/New_York','America/Denver','Europe/London','Asia/Singapore','Australia/Sydney'];
   const tzOpts = tzOptions.map(tz => `<option value="${tz}" ${p.timezone===tz?'selected':''}>${tz}</option>`).join('');
   el.innerHTML = `
