@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.2.0 | build: 202604131700 -->
+<!-- version: 2.2.1 | build: 202604131730 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -506,7 +506,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.2.0 — 202604131700';
+  out.textContent = 'v2.2.1 — 202604131730';
 }
 
 async function sendOTP() {
@@ -2457,9 +2457,28 @@ function bqRenderCarriers() {
 }
 
 function bqAddCarrier() {
-  if ((window._bqCarrierCount||1) >= (window._bqMaxCarriers||3)) return;
-  window._bqCarrierCount = (window._bqCarrierCount||1) + 1;
+  const oldCount = window._bqCarrierCount || 1;
+  if (oldCount >= (window._bqMaxCarriers||3)) return;
+  // Save existing values before innerHTML rebuild
+  const saved = [];
+  for (let i = 0; i < oldCount; i++) {
+    saved.push({
+      carrier: document.getElementById('bqCarrier_'+i)?.value || '',
+      rate:    document.getElementById('bqRate_'   +i)?.value || '',
+      transit: document.getElementById('bqTransit_'+i)?.value || '',
+      notes:   document.getElementById('bqNotes_'  +i)?.value || ''
+    });
+  }
+  window._bqCarrierCount = oldCount + 1;
   bqRenderCarriers();
+  // Restore saved values
+  saved.forEach((s, i) => {
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+    set('bqCarrier_'+i, s.carrier);
+    set('bqRate_'   +i, s.rate);
+    set('bqTransit_'+i, s.transit);
+    set('bqNotes_'  +i, s.notes);
+  });
 }
 
 function bqRemoveCarrier(idx) {
