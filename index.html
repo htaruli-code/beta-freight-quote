@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.0.2 | build: 202604131400 -->
+<!-- version: 2.1.0 | build: 202604131600 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -506,7 +506,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.0.2 — 202604131400';
+  out.textContent = 'v2.1.0 — 202604131600';
 }
 
 async function sendOTP() {
@@ -641,7 +641,7 @@ function buildSidebar(role) {
       </div>
       <div class="nav-section"><div class="nav-label">Account</div>
         <button class="nav-item" id="n-clientSettings" onclick="setNav(this,'clientSettings')"><span class="nav-icon">👤</span>My Profile</button>
-        <button class="nav-item" id="n-clientTeam" onclick="setNav(document.getElementById('n-clientSettings'),'clientSettings');setTimeout(()=>switchProfileTab('team'),150)"><span class="nav-icon">🏢</span>My Team</button>
+        <button class="nav-item" id="n-clientTeam" onclick="setNav(this,'clientSettings');setTimeout(()=>switchProfileTab('team'),150)"><span class="nav-icon">🏢</span>My Team</button>
       </div>`;
   }
 }
@@ -2412,65 +2412,42 @@ async function showBrokerQuotePage(requestId, brokerEmail, brokerId, sig) {
 
 function bqRenderCarriers() {
   const wrap = document.getElementById('bqCarriersWrap');
+  const addBtn = document.getElementById('bqAddBtn');
   const addWrap = document.getElementById('bqAddWrap');
   if (!wrap) return;
   const count = window._bqCarrierCount || 1;
   const max   = window._bqMaxCarriers  || 3;
-
-  // Save existing values from current DOM before any changes
-  const saved = [];
-  const existing = wrap.querySelectorAll('.bq-carrier-block');
-  existing.forEach((block, i) => {
-    saved.push({
-      carrier: block.querySelector('.bq-carrier-name')?.value || '',
-      rate:    block.querySelector('.bq-rate')?.value         || '',
-      transit: block.querySelector('.bq-transit')?.value      || '',
-      notes:   block.querySelector('.bq-notes')?.value        || ''
-    });
-  });
-
-  // Rebuild HTML
   let h = '';
   for (let i = 0; i < count; i++) {
-    const num     = i + 1;
+    const num = i + 1;
     const isFirst = i === 0;
-    h += `<div class="bq-carrier-block" data-idx="${i}" style="background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:14px;padding:18px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0A2540;">Carrier ${num}</div>
-        ${!isFirst ? `<button type="button" onclick="bqRemoveCarrier(${i})" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;padding:0 4px;">×</button>` : ''}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div style="grid-column:1/-1;">
-          <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">Carrier Name</label>
-          <input type="text" class="bq-carrier-name" placeholder="e.g. FedEx Freight, XPO Logistics" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
+    h += `
+      <div style="background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:14px;padding:18px;margin-bottom:12px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0A2540;">Carrier ${num}</div>
+          ${!isFirst ? `<button onclick="bqRemoveCarrier(${i})" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;line-height:1;padding:0;" title="Remove carrier">×</button>` : ''}
         </div>
-        <div>
-          <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">All-In Rate ($) *</label>
-          <input type="number" class="bq-rate" placeholder="e.g. 2500" min="1" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">Carrier Name *</label>
+            <input type="text" id="bqCarrier_${i}" placeholder="e.g. FedEx Freight, XPO Logistics" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">All-In Rate ($) *</label>
+            <input type="number" id="bqRate_${i}" placeholder="e.g. 2500" min="1" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">Transit Days *</label>
+            <input type="number" id="bqTransit_${i}" placeholder="e.g. 3" min="1" max="30" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">Notes (optional)</label>
+            <input type="text" id="bqNotes_${i}" placeholder="Service level, equipment type…" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
+          </div>
         </div>
-        <div>
-          <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">Transit Days *</label>
-          <input type="number" class="bq-transit" placeholder="e.g. 3" min="1" max="30" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
-        </div>
-        <div style="grid-column:1/-1;">
-          <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:5px;">Notes (optional)</label>
-          <input type="text" class="bq-notes" placeholder="Service level, equipment type…" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
-        </div>
-      </div>
-    </div>`;
+      </div>`;
   }
   wrap.innerHTML = h;
-
-  // Restore saved values into new DOM
-  const newBlocks = wrap.querySelectorAll('.bq-carrier-block');
-  saved.forEach((s, i) => {
-    if (!newBlocks[i]) return;
-    newBlocks[i].querySelector('.bq-carrier-name').value = s.carrier;
-    newBlocks[i].querySelector('.bq-rate').value         = s.rate;
-    newBlocks[i].querySelector('.bq-transit').value      = s.transit;
-    newBlocks[i].querySelector('.bq-notes').value        = s.notes;
-  });
-
   if (addWrap) addWrap.style.display = count >= max ? 'none' : 'block';
 }
 
@@ -2478,129 +2455,70 @@ function bqAddCarrier() {
   if ((window._bqCarrierCount||1) >= (window._bqMaxCarriers||3)) return;
   window._bqCarrierCount = (window._bqCarrierCount||1) + 1;
   bqRenderCarriers();
-  // Focus the carrier name field of the new row
-  const blocks = document.querySelectorAll('.bq-carrier-block');
-  const last   = blocks[blocks.length - 1];
-  if (last) last.querySelector('.bq-carrier-name')?.focus();
 }
 
 function bqRemoveCarrier(idx) {
-  if ((window._bqCarrierCount||1) <= 1) return;
-  // Save all values except the one being removed
-  const blocks = document.querySelectorAll('.bq-carrier-block');
-  const saved  = [];
-  blocks.forEach((block, i) => {
-    if (i === idx) return;
+  // Collect current values, remove the one at idx, re-render and restore
+  const count = window._bqCarrierCount || 1;
+  const saved = [];
+  for (let i = 0; i < count; i++) {
+    if (i === idx) continue;
     saved.push({
-      carrier: block.querySelector('.bq-carrier-name')?.value || '',
-      rate:    block.querySelector('.bq-rate')?.value         || '',
-      transit: block.querySelector('.bq-transit')?.value      || '',
-      notes:   block.querySelector('.bq-notes')?.value        || ''
+      carrier:  document.getElementById('bqCarrier_' +i)?.value || '',
+      rate:     document.getElementById('bqRate_'   +i)?.value || '',
+      transit:  document.getElementById('bqTransit_'+i)?.value || '',
+      notes:    document.getElementById('bqNotes_'  +i)?.value || ''
     });
-  });
-  window._bqCarrierCount = Math.max(1, saved.length);
+  }
+  window._bqCarrierCount = saved.length || 1;
   bqRenderCarriers();
-  // Restore values after rebuild (bqRenderCarriers restores from DOM, but DOM was just rebuilt)
-  const newBlocks = document.querySelectorAll('.bq-carrier-block');
   saved.forEach((s, i) => {
-    if (!newBlocks[i]) return;
-    newBlocks[i].querySelector('.bq-carrier-name').value = s.carrier;
-    newBlocks[i].querySelector('.bq-rate').value         = s.rate;
-    newBlocks[i].querySelector('.bq-transit').value      = s.transit;
-    newBlocks[i].querySelector('.bq-notes').value        = s.notes;
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+    set('bqCarrier_'+i, s.carrier);
+    set('bqRate_'   +i, s.rate);
+    set('bqTransit_'+i, s.transit);
+    set('bqNotes_'  +i, s.notes);
   });
 }
 
 async function submitBrokerQuoteFromPage(requestId, brokerEmail, brokerCompany) {
-  const coEl = document.getElementById('bqCo');
-  const co   = brokerCompany || (coEl ? coEl.value.trim() : '');
-  const valid = document.getElementById('bqValid')?.value || '';
+  const co      = brokerCompany || document.getElementById('bqCo')?.value.trim();
+  const valid   = document.getElementById('bqValid')?.value || '';
+  const count   = window._bqCarrierCount || 1;
 
   if (!co) return bqMsg('Enter your company name.');
 
-  // Collect values from class-based selectors — no ID dependency
-  const blocks   = document.querySelectorAll('.bq-carrier-block');
+  // Collect all carrier rows
   const carriers = [];
-
-  blocks.forEach((block, i) => {
-    const carrierName = (block.querySelector('.bq-carrier-name')?.value || '').trim();
-    const rateVal     = (block.querySelector('.bq-rate')?.value         || '').trim();
-    const transitVal  = (block.querySelector('.bq-transit')?.value      || '').trim();
-    const notes       = (block.querySelector('.bq-notes')?.value        || '').trim();
-
-    // Skip completely blank extra rows
-    if (!rateVal && !carrierName && blocks.length > 1) return;
-
-    if (!rateVal || isNaN(rateVal) || Number(rateVal) < 1) {
-      bqMsg(`Carrier ${i+1}: enter a valid rate.`); throw new Error('validation');
-    }
-    if (!transitVal || isNaN(transitVal)) {
-      bqMsg(`Carrier ${i+1}: enter transit days.`); throw new Error('validation');
-    }
-    carriers.push({ carrierName, rate: Number(rateVal), transitDays: Number(transitVal), validUntil: valid, notes });
-  });
-
+  for (let i = 0; i < count; i++) {
+    const carrierName = document.getElementById('bqCarrier_' +i)?.value.trim() || '';
+    const rate        = document.getElementById('bqRate_'    +i)?.value.trim();
+    const transit     = document.getElementById('bqTransit_' +i)?.value.trim();
+    const notes       = document.getElementById('bqNotes_'   +i)?.value.trim() || '';
+    if (!rate && !carrierName && count > 1) continue; // skip blank extra rows
+    if (!rate || isNaN(rate) || Number(rate) < 1) return bqMsg(`Carrier ${i+1}: enter a valid rate.`);
+    if (!transit || isNaN(transit))               return bqMsg(`Carrier ${i+1}: enter transit days.`);
+    carriers.push({ carrierName, rate: Number(rate), transitDays: Number(transit), validUntil: valid, notes });
+  }
   if (!carriers.length) return bqMsg('Enter at least one carrier with a rate and transit days.');
 
   const btn = document.getElementById('bqBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  btn.disabled = true; btn.textContent = 'Submitting…';
 
-  try {
-    let r;
+  const r = await api({ action:'submitMultipleCarriers', requestId, brokerEmail,
+    brokerCompany: co, carriers });
 
-    if (carriers.length === 1) {
-      // Single carrier — try new action first, fall back to legacy
-      r = await api({
-        action:        'submitMultipleCarriers',
-        requestId,     brokerEmail,
-        brokerCompany: co,
-        carriers
-      });
-      if (!r.success && r.error && r.error.toLowerCase().includes('unknown action')) {
-        // Backend not redeployed yet — use legacy single-carrier action
-        r = await api({
-          action:        'submitQuote',
-          requestId,     brokerEmail,
-          brokerCompany: co,
-          carrierName:   carriers[0].carrierName,
-          rate:          carriers[0].rate,
-          transitDays:   carriers[0].transitDays,
-          validUntil:    carriers[0].validUntil || '',
-          notes:         carriers[0].notes      || ''
-        });
-      }
-    } else {
-      // Multiple carriers — requires updated backend
-      r = await api({
-        action:        'submitMultipleCarriers',
-        requestId,     brokerEmail,
-        brokerCompany: co,
-        carriers
-      });
-      if (!r.success && r.error && r.error.toLowerCase().includes('unknown action')) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Submit Quote →'; }
-        return bqMsg('Your backend needs redeploying to support multiple carriers. Submit one carrier at a time until then.');
-      }
-    }
-
-    if (r.success) {
-      const content = document.getElementById('bqContent');
-      if (content) content.innerHTML = `
-        <div style="text-align:center;padding:40px 0;">
-          <div style="width:72px;height:72px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px;">✅</div>
-          <h2 style="font-family:Instrument Serif,serif;font-size:28px;color:#111827;margin-bottom:10px;">Quote${carriers.length > 1 ? 's' : ''} Submitted!</h2>
-          <p style="color:#6b7280;font-size:15px;line-height:1.6;max-width:340px;margin:0 auto;">${carriers.length} carrier option${carriers.length>1?'s':''} submitted. You will be notified if your quote is accepted.</p>
-          ${r.slotsRemaining > 0 ? `<p style="color:#9ca3af;font-size:13px;margin-top:12px;">You can add ${r.slotsRemaining} more carrier${r.slotsRemaining>1?'s':''} using this same link.</p>` : ''}
-        </div>`;
-    } else {
-      if (btn) { btn.disabled = false; btn.textContent = 'Submit Quote →'; }
-      bqMsg(r.error || 'Submission failed. Please try again.');
-    }
-  } catch(err) {
-    if (err.message !== 'validation') {
-      if (btn) { btn.disabled = false; btn.textContent = 'Submit Quote →'; }
-      bqMsg('Submission failed. Please try again.');
-    }
+  if (r.success) {
+    document.getElementById('bqContent').innerHTML = `
+      <div style="text-align:center;padding:40px 0;">
+        <div style="width:72px;height:72px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px;">✅</div>
+        <h2 style="font-family:'Instrument Serif',serif;font-size:28px;color:#111827;margin-bottom:10px;">Quote${carriers.length > 1 ? 's' : ''} Submitted!</h2>
+        <p style="color:#6b7280;font-size:15px;line-height:1.6;max-width:340px;margin:0 auto;">${carriers.length} carrier option${carriers.length>1?'s':''} submitted. The client has been notified and will be in touch if they select your quote.</p>
+        ${r.slotsRemaining > 0 ? `<p style="color:#9ca3af;font-size:13px;margin-top:12px;">You can still add ${r.slotsRemaining} more carrier${r.slotsRemaining>1?'s':''} using this link.</p>` : ''}
+      </div>`;
+  } else {
+    btn.disabled = false; btn.textContent = 'Submit Quote →';
+    bqMsg(r.error || 'Submission failed. Please try again.');
   }
 }
 
