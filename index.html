@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.3.0 | build: 202604141400 -->
+<!-- version: 2.3.1 | build: 202604141600 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -506,7 +506,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.3.0 — 202604141400';
+  out.textContent = 'v2.3.1 — 202604141600';
 }
 
 async function sendOTP() {
@@ -538,6 +538,7 @@ function backToEmail() { sw('ls2','ls1'); document.getElementById('otpCode').val
 
 function logout() {
   localStorage.removeItem('fq'); S = {email:'',token:'',role:''};
+  _abEntries = []; _abLoaded = false;
   document.getElementById('appScreen').classList.remove('active');
   document.getElementById('loginScreen').classList.add('active');
   sw('ls2','ls1');
@@ -641,7 +642,7 @@ function buildSidebar(role) {
       </div>
       <div class="nav-section"><div class="nav-label">Account</div>
         <button class="nav-item" id="n-clientSettings" onclick="setNav(this,'clientSettings')"><span class="nav-icon">👤</span>My Profile</button>
-        <button class="nav-item" id="n-clientTeam" onclick="setNav(this,'clientSettings');setTimeout(()=>switchProfileTab('team'),150)"><span class="nav-icon">🏢</span>My Team</button>
+        <button class="nav-item" id="n-clientTeam" onclick="setNav(this,'clientSettings');loadClientSettings().then(()=>switchProfileTab('team'))"><span class="nav-icon">🏢</span>My Team</button>
       </div>`;
   }
 }
@@ -829,11 +830,14 @@ async function submitRequest() {
 
 // ─── ADDRESS BOOK ─────────────────────────────────────────────
 let _abEntries = [];
+let _abLoaded  = false;
 
 async function loadAddressBook() {
   const el = document.getElementById('p-clientAddrBook');
   if (!el) return;
-  el.innerHTML = `
+  // Only rebuild the shell if not already loaded
+  if (!_abLoaded) {
+    el.innerHTML = `
     <div class="page-head">
       <h1>Address Book</h1>
       <p>Save frequently used pickup and delivery addresses for quick access when booking.</p>
@@ -844,9 +848,11 @@ async function loadAddressBook() {
     </div>
     <div id="abFormWrap"></div>
     <div id="abListWrap"><div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div></div>`;
-  const r = await api({ action:'getAddressBook', email:S.email, token:S.token });
-  if (!r.success) { document.getElementById('abListWrap').innerHTML = `<div class="alert alert-error">${esc(r.error)}</div>`; return; }
-  _abEntries = r.entries || [];
+    const r = await api({ action:'getAddressBook', email:S.email, token:S.token });
+    if (!r.success) { document.getElementById('abListWrap').innerHTML = `<div class="alert alert-error">${esc(r.error)}</div>`; return; }
+    _abEntries = r.entries || [];
+    _abLoaded  = true;
+  }
   abRenderList();
 }
 
@@ -934,9 +940,28 @@ async function abSave(entryId) {
   };
   const r = await api(payload);
   if (r.success) {
+    const newEntry = {
+      entryId:       r.entryId,
+      companyName:   payload.companyName,
+      contactPerson: payload.contactPerson,
+      email:         payload.email2,
+      phone:         payload.phone,
+      addressLine1:  payload.addressLine1,
+      addressLine2:  payload.addressLine2,
+      city:          payload.city,
+      state:         payload.state,
+      zipCode:       payload.zipCode
+    };
+    if (entryId) {
+      // Update existing entry in local array
+      const idx = _abEntries.findIndex(e => e.entryId === entryId);
+      if (idx !== -1) _abEntries[idx] = newEntry;
+    } else {
+      // Add new entry to local array
+      _abEntries.push(newEntry);
+    }
     abCancelForm();
-    const refresh = await api({ action:'getAddressBook', email:S.email, token:S.token });
-    if (refresh.success) { _abEntries = refresh.entries || []; abRenderList(); }
+    abRenderList();
   } else {
     const m = document.getElementById('abFormMsg');
     if (m) m.innerHTML = `<div class="alert alert-error">${esc(r.error)}</div>`;
