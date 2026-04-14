@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.2.1 | build: 202604131730 -->
+<!-- version: 2.2.2 | build: 202604131800 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -506,7 +506,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.2.1 — 202604131730';
+  out.textContent = 'v2.2.2 — 202604131800';
 }
 
 async function sendOTP() {
@@ -824,10 +824,7 @@ function renderBrokerSelector() {
     });
   }
   // Custom brokers section
-  const customVendorLabel = window._clientOrgId
-    ? 'Organisation Custom Vendors <span style="font-weight:400;color:var(--ink3);">(shared with your org)</span>'
-    : 'My Custom Vendors';
-  h += `<div class="bs-title" style="margin-top:12px;">${customVendorLabel}</div>`;
+  h += '<div class="bs-title" style="margin-top:12px;">My Custom Vendors</div>';
   if (!brokerSelectorData.custom.length) {
     h += '<div style="font-size:12px;color:var(--ink3);">No custom vendors added yet.</div>';
   } else {
@@ -1920,8 +1917,6 @@ async function loadClientSettings() {
   const r = await api({action:'getUserProfile', email:S.email, token:S.token});
   if (!r.success) { el.innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
   const p = r.profile || {};
-  window._clientOrgId   = p.orgId   || '';
-  window._clientOrgRole = p.orgRole || '';
   const tzOptions = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['America/Los_Angeles','America/Chicago','America/New_York','America/Denver','Europe/London','Asia/Singapore','Australia/Sydney'];
   const tzOpts = tzOptions.map(tz => `<option value="${tz}" ${p.timezone===tz?'selected':''}>${tz}</option>`).join('');
   el.innerHTML = `
@@ -2457,28 +2452,9 @@ function bqRenderCarriers() {
 }
 
 function bqAddCarrier() {
-  const oldCount = window._bqCarrierCount || 1;
-  if (oldCount >= (window._bqMaxCarriers||3)) return;
-  // Save existing values before innerHTML rebuild
-  const saved = [];
-  for (let i = 0; i < oldCount; i++) {
-    saved.push({
-      carrier: document.getElementById('bqCarrier_'+i)?.value || '',
-      rate:    document.getElementById('bqRate_'   +i)?.value || '',
-      transit: document.getElementById('bqTransit_'+i)?.value || '',
-      notes:   document.getElementById('bqNotes_'  +i)?.value || ''
-    });
-  }
-  window._bqCarrierCount = oldCount + 1;
+  if ((window._bqCarrierCount||1) >= (window._bqMaxCarriers||3)) return;
+  window._bqCarrierCount = (window._bqCarrierCount||1) + 1;
   bqRenderCarriers();
-  // Restore saved values
-  saved.forEach((s, i) => {
-    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
-    set('bqCarrier_'+i, s.carrier);
-    set('bqRate_'   +i, s.rate);
-    set('bqTransit_'+i, s.transit);
-    set('bqNotes_'  +i, s.notes);
-  });
 }
 
 function bqRemoveCarrier(idx) {
@@ -2592,7 +2568,7 @@ async function showAcceptRejectPage(quoteId, action, sig) {
 
     </div>`;
 
-  const r = await api({ action: 'processQuoteAction', quoteId, action, sig });
+  const r = await api({ action: 'processQuoteAction', quoteId, quoteAction: action, sig });
   const el = document.getElementById('arContent');
 
   if (r.success) {
