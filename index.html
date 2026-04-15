@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.1 | build: 202604142400 -->
+<!-- version: 2.7.2 | build: 202604142500 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -740,15 +740,19 @@ async function loadClient() {
       <div id="reqMsg"></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;">
         <div class="form-grid">
-          <div class="ff"><label>Origin City / State</label><input type="text" id="fO" placeholder="Los Angeles, CA"></div>
-          <div class="ff"><label>Origin ZIP</label><input type="text" id="fOZ" placeholder="90001" maxlength="10"></div>
+          <div class="ff"><label>Origin City / State <span id="fOSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label><input type="text" id="fO" placeholder="Los Angeles, CA" oninput="this.dataset.autoFilled='false'"></div>
+          <div class="ff"><label>Origin ZIP</label><input type="text" id="fOZ" placeholder="90001" maxlength="10"
+            onchange="lookupZip(this.value,'fO',null,'fOSpin')"
+            onkeyup="if(this.value.length===5)lookupZip(this.value,'fO',null,'fOSpin')"></div>
           <div class="span-2" style="display:flex;align-items:center;gap:12px;padding:2px 0;">
             <div style="flex:1;height:1px;background:var(--border);"></div>
             <span style="color:var(--ink3);font-size:13px;">to destination</span>
             <div style="flex:1;height:1px;background:var(--border);"></div>
           </div>
-          <div class="ff"><label>Destination City / State</label><input type="text" id="fD" placeholder="Chicago, IL"></div>
-          <div class="ff"><label>Destination ZIP</label><input type="text" id="fDZ" placeholder="60601" maxlength="10"></div>
+          <div class="ff"><label>Destination City / State <span id="fDSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label><input type="text" id="fD" placeholder="Chicago, IL" oninput="this.dataset.autoFilled='false'"></div>
+          <div class="ff"><label>Destination ZIP</label><input type="text" id="fDZ" placeholder="60601" maxlength="10"
+            onchange="lookupZip(this.value,'fD',null,'fDSpin')"
+            onkeyup="if(this.value.length===5)lookupZip(this.value,'fD',null,'fDSpin')"></div>
           <div class="ff span-2">
             <label>Freight Type</label>
             <div class="freight-sel">
@@ -1309,6 +1313,69 @@ function requestAgain(req) {
 
 // ─── EMPLOYEE ─────────────────────────────────────────────────
 
+// ─── ZIP CODE LOOKUP — v2.7.2 ─────────────────────────────────
+// Uses api.zippopotam.us (free, no key, US ZIPs).
+// cityFieldId   — id of the city <input> to auto-fill
+// stateFieldId  — id of the state <input> to auto-fill (2-letter abbrev)
+// spinId        — optional id of a small status element to show feedback
+
+const _zipCache = {};   // cache results to avoid duplicate calls
+
+async function lookupZip(zip, cityFieldId, stateFieldId, spinId) {
+  zip = String(zip).trim();
+  if (zip.length !== 5 || !/^\d{5}$/.test(zip)) return;  // US 5-digit only
+
+  // Show subtle loading hint
+  const spinEl = spinId ? document.getElementById(spinId) : null;
+  if (spinEl) { spinEl.textContent = '🔍'; spinEl.style.opacity = '1'; }
+
+  try {
+    // Check cache first
+    if (!_zipCache[zip]) {
+      const res  = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!res.ok) { if (spinEl) spinEl.style.opacity = '0'; return; }
+      _zipCache[zip] = await res.json();
+    }
+    const data  = _zipCache[zip];
+    const place = data.places && data.places[0];
+    if (!place) { if (spinEl) spinEl.style.opacity = '0'; return; }
+
+    const city  = place['place name']       || '';
+    const state = place['state abbreviation'] || '';
+
+    const cityEl  = document.getElementById(cityFieldId);
+    const stateEl = stateFieldId ? document.getElementById(stateFieldId) : null;
+
+    if (stateEl) {
+      // Separate city and state fields (booking modal)
+      if (cityEl  && (!cityEl.value  || cityEl.dataset.autoFilled  === 'true')) {
+        cityEl.value = city;
+        cityEl.dataset.autoFilled = 'true';
+      }
+      if (!stateEl.value || stateEl.dataset.autoFilled === 'true') {
+        stateEl.value = state;
+        stateEl.dataset.autoFilled = 'true';
+      }
+    } else {
+      // Combined "City, ST" single field (New Request form)
+      if (cityEl && (!cityEl.value || cityEl.dataset.autoFilled === 'true')) {
+        cityEl.value = state ? `${city}, ${state}` : city;
+        cityEl.dataset.autoFilled = 'true';
+      }
+    }
+
+    if (spinEl) { spinEl.textContent = '✓'; setTimeout(() => { spinEl.style.opacity = '0'; }, 1200); }
+  } catch(e) {
+    if (spinEl) spinEl.style.opacity = '0';
+  }
+}
+
+// City/state fields — clear autoFilled flag when user manually edits them
+function _markManual(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (el) el.dataset.autoFilled = 'false';
+}
+
 // ─── BOOKING MODAL ────────────────────────────────────────────
 // v2.6.0 — Shipper creates booking from accepted quote.
 // Origin / Destination from address book dropdown or manual.
@@ -1403,9 +1470,14 @@ function _bkModalHtml(q) {
           <div class="bk-field"><label>Address</label><input type="text" id="bkOriginAddr" placeholder="123 Main St"></div>
         </div>
         <div class="bk-row bk-row-3">
-          <div class="bk-field"><label>City</label><input type="text" id="bkOriginCity" placeholder="Los Angeles"></div>
-          <div class="bk-field"><label>State</label><input type="text" id="bkOriginState" placeholder="CA" maxlength="2"></div>
-          <div class="bk-field"><label>ZIP</label><input type="text" id="bkOriginZip" placeholder="90001" maxlength="10"></div>
+          <div class="bk-field"><label>City</label><input type="text" id="bkOriginCity" placeholder="Los Angeles" oninput="_markManual('bkOriginCity')"></div>
+          <div class="bk-field"><label>State</label><input type="text" id="bkOriginState" placeholder="CA" maxlength="2" oninput="_markManual('bkOriginState')"></div>
+          <div class="bk-field">
+            <label>ZIP <span id="bkOriginZipSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label>
+            <input type="text" id="bkOriginZip" placeholder="90001" maxlength="10"
+              onchange="lookupZip(this.value,'bkOriginCity','bkOriginState','bkOriginZipSpin')"
+              onkeyup="if(this.value.length===5)lookupZip(this.value,'bkOriginCity','bkOriginState','bkOriginZipSpin')">
+          </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:4px;cursor:pointer;">
           <input type="checkbox" id="bkOriginDefault" style="accent-color:#0A2540;width:14px;height:14px;">
@@ -1430,9 +1502,14 @@ function _bkModalHtml(q) {
           <div class="bk-field"><label>Address</label><input type="text" id="bkDestAddr" placeholder="456 Oak Ave"></div>
         </div>
         <div class="bk-row bk-row-3">
-          <div class="bk-field"><label>City</label><input type="text" id="bkDestCity" placeholder="Chicago"></div>
-          <div class="bk-field"><label>State</label><input type="text" id="bkDestState" placeholder="IL" maxlength="2"></div>
-          <div class="bk-field"><label>ZIP</label><input type="text" id="bkDestZip" placeholder="60601" maxlength="10"></div>
+          <div class="bk-field"><label>City</label><input type="text" id="bkDestCity" placeholder="Chicago" oninput="_markManual('bkDestCity')"></div>
+          <div class="bk-field"><label>State</label><input type="text" id="bkDestState" placeholder="IL" maxlength="2" oninput="_markManual('bkDestState')"></div>
+          <div class="bk-field">
+            <label>ZIP <span id="bkDestZipSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label>
+            <input type="text" id="bkDestZip" placeholder="60601" maxlength="10"
+              onchange="lookupZip(this.value,'bkDestCity','bkDestState','bkDestZipSpin')"
+              onkeyup="if(this.value.length===5)lookupZip(this.value,'bkDestCity','bkDestState','bkDestZipSpin')">
+          </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:4px;cursor:pointer;">
           <input type="checkbox" id="bkDestDefault" style="accent-color:#0A2540;width:14px;height:14px;">
