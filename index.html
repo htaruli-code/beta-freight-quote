@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.6.0 | build: 202604142100 -->
+<!-- version: 2.7.0 | build: 202604142300 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -655,6 +655,7 @@ function buildSidebar(role) {
       <div class="nav-section"><div class="nav-label">Operations</div>
         <button class="nav-item" id="n-adminRequests" onclick="setNav(this,'adminRequests')"><span class="nav-icon">📦</span>All Requests</button>
         <button class="nav-item" id="n-adminAllQuotes" onclick="setNav(this,'adminAllQuotes')"><span class="nav-icon">💬</span>All Quotes</button>
+        <button class="nav-item" id="n-adminBookings" onclick="setNav(this,'adminBookings')"><span class="nav-icon">📋</span>All Bookings</button>
       </div>
       <div class="nav-section"><div class="nav-label">Configuration</div>
         <button class="nav-item" id="n-adminSettings"   onclick="setNav(this,'adminSettings')"><span class="nav-icon">⚙️</span>Settings</button>
@@ -671,6 +672,7 @@ function buildSidebar(role) {
       <div class="nav-section"><div class="nav-label">My Quotes</div>
         <button class="nav-item active" id="n-brokerDash"  onclick="setNav(this,'brokerDash')"><span class="nav-icon">📊</span>Dashboard</button>
         <button class="nav-item" id="n-brokerQuotes" onclick="setNav(this,'brokerQuotes')"><span class="nav-icon">📋</span>All Quotes</button>
+        <button class="nav-item" id="n-brokerBookings" onclick="setNav(this,'brokerBookings')"><span class="nav-icon">📦</span>My Bookings</button>
       </div>
       <div class="nav-section"><div class="nav-label">Account</div>
         <button class="nav-item" id="n-brokerSettings" onclick="setNav(this,'brokerSettings')"><span class="nav-icon">👤</span>My Profile</button>
@@ -680,6 +682,7 @@ function buildSidebar(role) {
       <div class="nav-section"><div class="nav-label">Shipments</div>
         <button class="nav-item active" id="n-clientNew"  onclick="setNav(this,'clientNew')"><span class="nav-icon">➕</span>New Request</button>
         <button class="nav-item" id="n-clientDash" onclick="setNav(this,'clientDash')"><span class="nav-icon">📋</span>My Requests</button>
+        <button class="nav-item" id="n-clientBookings" onclick="setNav(this,'clientBookings')"><span class="nav-icon">📦</span>My Bookings</button>
         <button class="nav-item" id="n-clientAddrBook" onclick="setNav(this,'clientAddrBook')"><span class="nav-icon">📒</span>Address Book</button>
       </div>
       <div class="nav-section"><div class="nav-label">Account</div>
@@ -702,12 +705,14 @@ function showPanel(id) {
   // Lazy-load panels on first visit
   if (id === 'clientDash')      loadClientDash();
   if (id === 'clientAddrBook')  loadAddressBook();
+  if (id === 'clientBookings')  loadBookingsPanel('client');
   if (id === 'adminEmployees')  loadEmpPanel();
   if (id === 'adminActivity')   loadActivityPanel();
   if (id === 'adminBrokers')    loadBrokerPanel();
   if (id === 'adminClients')    loadClientsPanel();
   if (id === 'adminRequests')   loadRequestsPanel();
   if (id === 'adminAllQuotes')  loadAdminAllQuotes();
+  if (id === 'adminBookings')   loadBookingsPanel('admin');
   if (id === 'clientSettings')  loadClientSettings();
   if (id === 'brokerSettings')  loadBrokerSettings();
   if (id === 'adminSettings')   loadSettingsPanel();
@@ -715,6 +720,7 @@ function showPanel(id) {
   if (id === 'empRequests')     {} // already rendered
   if (id === 'brokerDash')      loadBrokerDashboard();
   if (id === 'brokerQuotes')    loadBrokerQuotesPanel();
+  if (id === 'brokerBookings')  loadBookingsPanel('broker');
 }
 
 // ─── CLIENT ───────────────────────────────────────────────────
@@ -785,6 +791,7 @@ async function loadClient() {
       </div>
     </div>
     <div class="panel" id="p-clientDash"></div>
+    <div class="panel" id="p-clientBookings"></div>
     <div class="panel" id="p-clientAddrBook"></div>
     <div class="panel" id="p-clientSettings"></div>`;
   // Build freight type buttons AFTER innerHTML is set so the DOM element exists
@@ -1141,10 +1148,16 @@ async function removeCustomBroker(id, btn) {
 
 async function loadClientDash() {
   document.getElementById('p-clientDash').innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
-  const r = await api({action:'getClientData', email:S.email, token:S.token});
+  const [r, rb] = await Promise.all([
+    api({action:'getClientData',    email:S.email, token:S.token}),
+    api({action:'getClientBookings', email:S.email, token:S.token})
+  ]);
   if (!r.success) { document.getElementById('p-clientDash').innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
   if (!r.requests.length) { document.getElementById('p-clientDash').innerHTML = '<div class="empty"><h3>No requests yet</h3><p>Submit your first freight request to get started.</p></div>'; return; }
 
+  // Map quoteId → bookingId for "View Booking" button
+  const bookedMap = {};
+  if (rb.success) (rb.bookings||[]).forEach(b => { bookedMap[b.quoteId] = b.bookingId; });
 
   document.getElementById('p-clientDash').innerHTML = '<div id="clientReqWrap"></div>';
   let cPage = 1;
@@ -1206,6 +1219,7 @@ async function loadClientDash() {
           // Each carrier row inside the vendor card
           vendor.carriers.forEach((q, idx) => {
             const isLast = idx === vendor.carriers.length - 1;
+            const alreadyBooked = bookedMap[q.quoteId] || null;
             ph += `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;${!isLast?'border-bottom:1px solid var(--border);':''}${q.status==='accepted'?'background:rgba(25,122,69,.04);':''}${q.status==='rejected'?'opacity:.5;':''}gap:12px;flex-wrap:wrap;">
               <div style="flex:1;">
                 <div style="font-weight:600;font-size:13px;">${q.carrierName ? esc(q.carrierName) : '<span style="color:var(--ink3);font-style:italic;">Carrier not specified</span>'}</div>
@@ -1221,7 +1235,10 @@ async function loadClientDash() {
                   <button class="btn-accept" onclick="respondQuote('${q.quoteId}','accept',this)">✓ Accept</button>
                   <button class="btn-reject" onclick="respondQuote('${q.quoteId}','reject',this)">✕ Reject</button>
                 </div>`:''}
-                ${q.status==='accepted'?`<button onclick="openBookingModal('${q.quoteId}',${JSON.stringify({origin:req.origin,originZip:req.originZip,destination:req.destination,destZip:req.destZip,freightType:req.freightType,weight:req.weight,brokerCompany:q.brokerCompany,carrierName:q.carrierName||'',rate:q.rate,quoteId:q.quoteId}).replace(/"/g,'&quot;')})" style="padding:8px 16px;border-radius:8px;border:none;background:#0A2540;color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;" onmouseover="this.style.background='#0d2f52'" onmouseout="this.style.background='#0A2540'">📋 Create Booking</button>`:''}
+                ${q.status==='accepted'?(alreadyBooked
+                  ? `<button onclick="setNav(document.getElementById('n-clientBookings'),'clientBookings')" style="padding:8px 16px;border-radius:8px;border:1.5px solid #0A2540;background:transparent;color:#0A2540;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='var(--blue-bg)'" onmouseout="this.style.background='transparent'">📂 View Booking</button>`
+                  : `<button onclick="openBookingModal('${q.quoteId}',${JSON.stringify({origin:req.origin,originZip:req.originZip,destination:req.destination,destZip:req.destZip,freightType:req.freightType,weight:req.weight,brokerCompany:q.brokerCompany,carrierName:q.carrierName||'',rate:q.rate,quoteId:q.quoteId}).replace(/"/g,'&quot;')})" style="padding:8px 16px;border-radius:8px;border:none;background:#0A2540;color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='#0d2f52'" onmouseout="this.style.background='#0A2540'">📋 Create Booking</button>`)
+                :''}
               </div>
             </div>`;
           });
@@ -1325,6 +1342,14 @@ function openBookingModal(quoteId, qData) {
     const today = new Date().toISOString().split('T')[0];
     const dpEl = document.getElementById('bkPickupDate');
     if (dpEl) { dpEl.value = today; dpEl.min = today; }
+
+    // Auto-select tab based on freight type
+    const ft = (qData.freightType || '').toUpperCase();
+    if (ft === 'FTL' || ft === 'FULL TRUCKLOAD') {
+      bkSelectTab('FTL');
+    } else {
+      bkSelectTab('LTL');
+    }
 
     bkRenderItems();
     bkPopulateAbDropdowns();
@@ -1430,6 +1455,33 @@ function _bkModalHtml(q) {
         </div>
       </div>
 
+      <!-- FTL FIELDS (hidden by default) -->
+      <div class="bk-section" id="bkFtlSection" style="display:none;">
+        <div class="bk-section-title">Truckload Details</div>
+        <div class="bk-row bk-row-3">
+          <div class="bk-field">
+            <label>Freight Type *</label>
+            <select id="bkFtlLoadType">
+              <option value="">— Select —</option>
+              <option value="Floor Load">Floor Load</option>
+              <option value="Palletized">Palletized</option>
+            </select>
+          </div>
+          <div class="bk-field">
+            <label>Total Weight (max 44,000 lbs) *</label>
+            <input type="number" id="bkFtlWeight" placeholder="e.g. 38000" min="1" max="44000">
+          </div>
+          <div class="bk-field">
+            <label>Equipment Type *</label>
+            <select id="bkFtlEquipment">
+              <option value="">— Select —</option>
+              <option value="Dry Van Truckload">Dry Van Truckload</option>
+              <option value="Refrigerated Truckload">Refrigerated Truckload</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
     </div>
     <div class="bk-footer">
       <div id="bkFooterMsg" style="font-size:13px;"></div>
@@ -1442,18 +1494,21 @@ function _bkModalHtml(q) {
 }
 
 function bkSelectTab(tab) {
-  const ltl = document.getElementById('bkTabLTL');
-  const ftl = document.getElementById('bkTabFTL');
-  const sec = document.getElementById('bkShipmentSection');
+  const ltl    = document.getElementById('bkTabLTL');
+  const ftl    = document.getElementById('bkTabFTL');
+  const ltlSec = document.getElementById('bkShipmentSection');
+  const ftlSec = document.getElementById('bkFtlSection');
   if (!ltl || !ftl) return;
   if (tab === 'LTL') {
     ltl.style.background = '#0A2540'; ltl.style.color = '#fff';
     ftl.style.background = 'transparent'; ftl.style.color = 'var(--ink2)';
-    if (sec) sec.style.display = '';
+    if (ltlSec) ltlSec.style.display = '';
+    if (ftlSec) ftlSec.style.display = 'none';
   } else {
     ftl.style.background = '#0A2540'; ftl.style.color = '#fff';
     ltl.style.background = 'transparent'; ltl.style.color = 'var(--ink2)';
-    if (sec) sec.style.display = 'none';
+    if (ltlSec) ltlSec.style.display = 'none';
+    if (ftlSec) ftlSec.style.display = '';
   }
 }
 
@@ -1587,38 +1642,47 @@ function closeBookingModal() {
 
 async function submitBooking() {
   const gv = id => document.getElementById(id)?.value.trim() || '';
-  const pickupDate    = gv('bkPickupDate');
-  const originZip     = gv('bkOriginZip');
-  const destZip       = gv('bkDestZip');
-
+  const pickupDate = gv('bkPickupDate');
+  const originZip  = gv('bkOriginZip');
+  const destZip    = gv('bkDestZip');
   if (!pickupDate) return _bkMsg('Pickup date is required.','error');
   if (!originZip)  return _bkMsg('Origin ZIP is required.','error');
   if (!destZip)    return _bkMsg('Destination ZIP is required.','error');
 
-  // Validate at least one item has weight
-  const hasWeight = _bkItems.some(it => parseFloat(it.weight) > 0);
-  if (!hasWeight)  return _bkMsg('Enter weight for at least one shipment item.','error');
+  // Detect LTL vs FTL
+  const isFTL = document.getElementById('bkFtlSection')?.style.display !== 'none';
+  let items = [], ftlLoadType = '', ftlEquipment = '', totalWeight = '';
+
+  if (isFTL) {
+    ftlLoadType  = gv('bkFtlLoadType');
+    ftlEquipment = gv('bkFtlEquipment');
+    totalWeight  = gv('bkFtlWeight');
+    if (!ftlLoadType)  return _bkMsg('Select a freight type (Floor Load / Palletized).','error');
+    if (!ftlEquipment) return _bkMsg('Select an equipment type.','error');
+    if (!totalWeight)  return _bkMsg('Enter total weight.','error');
+    if (Number(totalWeight) > 44000) return _bkMsg('Total weight cannot exceed 44,000 lbs.','error');
+  } else {
+    items = _bkItems;
+    const hasWeight = items.some(it => parseFloat(it.weight) > 0);
+    if (!hasWeight) return _bkMsg('Enter weight for at least one shipment item.','error');
+  }
 
   const btn = document.getElementById('bkSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Confirming…'; }
 
   const payload = {
-    action:          'createBooking',
-    email:           S.email,
-    token:           S.token,
-    quoteId:         _bkQuoteId,
+    action:        'createBooking',
+    email:         S.email,
+    token:         S.token,
+    quoteId:       _bkQuoteId,
     pickupDate,
-    originCompany:   gv('bkOriginCompany'),
-    originAddress:   gv('bkOriginAddr'),
-    originCity:      gv('bkOriginCity'),
-    originState:     gv('bkOriginState'),
-    originZip,
-    destCompany:     gv('bkDestCompany'),
-    destAddress:     gv('bkDestAddr'),
-    destCity:        gv('bkDestCity'),
-    destState:       gv('bkDestState'),
-    destZip,
-    items:           _bkItems
+    freightType:   isFTL ? 'FTL' : 'LTL',
+    ftlLoadType,   ftlEquipment,  totalWeight,
+    items,
+    originCompany: gv('bkOriginCompany'), originAddress: gv('bkOriginAddr'),
+    originCity:    gv('bkOriginCity'),    originState:   gv('bkOriginState'),  originZip,
+    destCompany:   gv('bkDestCompany'),   destAddress:   gv('bkDestAddr'),
+    destCity:      gv('bkDestCity'),      destState:     gv('bkDestState'),     destZip
   };
 
   const r = await api(payload);
@@ -1632,9 +1696,9 @@ async function submitBooking() {
         const notice = document.createElement('div');
         notice.className = 'alert alert-success';
         notice.style.marginBottom = '16px';
-        notice.textContent = `✓ Booking ${r.bookingId} confirmed! A confirmation has been sent to your email.`;
+        notice.textContent = `✓ Booking ${r.bookingId} confirmed! Confirmation emails with PDF sent to you and your broker.`;
         wrap.prepend(notice);
-        setTimeout(() => notice.remove(), 6000);
+        setTimeout(() => notice.remove(), 8000);
       }
     });
   } else {
@@ -1653,6 +1717,183 @@ function _bkMsg(text, type) {
 
 
 
+function _bkMsg(text, type) {
+  const el = document.getElementById('bkMsg');
+  const fe = document.getElementById('bkFooterMsg');
+  const cls = type === 'error' ? 'alert alert-error' : 'alert alert-success';
+  if (el) el.innerHTML = `<div class="${cls}" style="margin-bottom:12px;">${esc(text)}</div>`;
+  if (fe) fe.innerHTML = `<span style="color:${type==='error'?'var(--red)':'var(--green)'};">${esc(text)}</span>`;
+}
+
+// ─── BOOKINGS HISTORY PANEL ───────────────────────────────────
+// v2.7.0 — shared panel for client, broker, admin.
+// role = 'client' | 'broker' | 'admin'
+
+async function loadBookingsPanel(role) {
+  const panelId = role === 'admin' ? 'p-adminBookings'
+                : role === 'broker' ? 'p-brokerBookings'
+                : 'p-clientBookings';
+  const el = document.getElementById(panelId);
+  if (!el) return;
+  el.innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
+
+  let r;
+  if (role === 'admin') {
+    r = await api({ action:'adminGetBookings', email:S.email, token:S.token });
+  } else if (role === 'broker') {
+    r = await api({ action:'getBrokerBookings', brokerEmail:S.email });
+  } else {
+    r = await api({ action:'getClientBookings', email:S.email, token:S.token });
+  }
+
+  if (!r.success) {
+    el.innerHTML = `<div class="alert alert-error">${esc(r.error||'Failed to load bookings.')}</div>`;
+    return;
+  }
+
+  const allBookings = r.bookings || [];
+  const pageSize    = 20;
+  let   curPage     = 1;
+
+  function renderPage(p) {
+    curPage = p;
+    const totalPages = Math.max(1, Math.ceil(allBookings.length / pageSize));
+    const slice      = allBookings.slice((p - 1) * pageSize, p * pageSize);
+
+    const titleMap = { admin:'All Bookings', broker:'My Bookings', client:'My Bookings' };
+    let h = `<div class="page-head">
+      <h1>${titleMap[role]}</h1>
+      <p>${allBookings.length} booking${allBookings.length !== 1 ? 's' : ''} total</p>
+    </div>`;
+
+    if (!allBookings.length) {
+      h += `<div class="empty"><h3>No bookings yet</h3><p>Bookings appear here once a shipper confirms an accepted quote.</p></div>`;
+      el.innerHTML = h;
+      return;
+    }
+
+    h += `<div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;font-size:13px;">
+      <thead>
+        <tr style="background:var(--surface2);">
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Booking ID</th>
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Request / Quote</th>
+          ${role === 'admin' ? `<th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Client</th>` : ''}
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Route</th>
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Pickup Date</th>
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Freight</th>
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Status</th>
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);white-space:nowrap;border-bottom:1px solid var(--border);">Booked On</th>
+          <th style="padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);border-bottom:1px solid var(--border);"></th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    slice.forEach((b, i) => {
+      const origin = [b.originCity, b.originState, b.originZip].filter(Boolean).join(', ') || b.originZip || '—';
+      const dest   = [b.destCity,   b.destState,   b.destZip  ].filter(Boolean).join(', ') || b.destZip   || '—';
+      const rowBg  = i % 2 === 0 ? '' : 'background:var(--surface2);';
+      let   items  = [];
+      try { items = JSON.parse(b.items || '[]'); } catch(e) {}
+      const itemSummary = items.length
+        ? `${items.length} item${items.length>1?'s':''}, ${items.reduce((s,it)=>(s+(parseFloat(it.weight)||0)*(parseInt(it.qty)||1)),0).toLocaleString()} lb total`
+        : (b.items && b.items !== '[]' ? b.items.substring(0,60) : '');
+
+      h += `<tr style="${rowBg}border-bottom:1px solid var(--border);">
+        <td style="padding:12px 14px;font-family:monospace;font-size:12px;font-weight:700;color:var(--blue);white-space:nowrap;">${esc(b.bookingId)}</td>
+        <td style="padding:12px 14px;">
+          <div style="font-size:11px;color:var(--ink2);">Req: <span style="font-family:monospace;">${esc(b.requestId)}</span></div>
+          <div style="font-size:11px;color:var(--ink2);">Qt: <span style="font-family:monospace;">${esc(b.quoteId)}</span></div>
+        </td>
+        ${role === 'admin' ? `<td style="padding:12px 14px;font-size:12px;color:var(--ink2);">${esc(b.clientEmail)}</td>` : ''}
+        <td style="padding:12px 14px;">
+          <div style="font-weight:600;font-size:13px;">${esc(origin)}</div>
+          <div style="color:var(--ink3);font-size:11px;">→ ${esc(dest)}</div>
+          ${itemSummary ? `<div style="color:var(--ink3);font-size:11px;margin-top:2px;">📦 ${esc(itemSummary)}</div>` : ''}
+        </td>
+        <td style="padding:12px 14px;font-weight:600;white-space:nowrap;">${esc(b.pickupDate||'—')}</td>
+        <td style="padding:12px 14px;white-space:nowrap;">${esc(b.freightType||'—')}</td>
+        <td style="padding:12px 14px;">
+          <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--green-bg);color:var(--green);border:1px solid rgba(25,122,69,.2);">${esc(b.status||'Confirmed')}</span>
+        </td>
+        <td style="padding:12px 14px;font-size:12px;color:var(--ink2);white-space:nowrap;">${b.createdAt ? fdt(b.createdAt) : '—'}</td>
+        <td style="padding:12px 14px;">
+          <button onclick="showBookingDetail(${JSON.stringify(b).replace(/"/g,'&quot;')})" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;" onmouseover="this.style.background='var(--blue-bg)'" onmouseout="this.style.background='transparent'">View</button>
+        </td>
+      </tr>`;
+    });
+
+    h += `</tbody></table></div>`;
+    if (totalPages > 1) h += paginationBar(p, totalPages, allBookings.length, `_bkPage_${role}`);
+    el.innerHTML = h;
+  }
+
+  // Register paginator in window scope
+  window[`_bkPage_${role}`] = renderPage;
+  renderPage(1);
+}
+
+function showBookingDetail(b) {
+  let items = [];
+  try { items = JSON.parse(b.items || '[]'); } catch(e) {}
+
+  const fmtAddr = (co, addr, city, state, zip) =>
+    [co, addr, [city, state].filter(Boolean).join(', '), zip].filter(Boolean).join('<br>') || '—';
+
+  const origin = fmtAddr(b.originCompany, b.originAddress, b.originCity, b.originState, b.originZip);
+  const dest   = fmtAddr(b.destCompany,   b.destAddress,   b.destCity,   b.destState,   b.destZip);
+
+  const itemRows = items.length ? items.map((it, i) =>
+    `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#555;">Item ${i+1}</td>
+     <td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;">${esc(it.qty||1)} × ${esc(it.unit||'unit')} — ${esc(it.length||'?')}×${esc(it.width||'?')}×${esc(it.height||'?')} in, ${esc(it.weight||'?')} lb/unit, Class ${esc(it.freightClass||'—')}${it.nmfc?' NMFC '+esc(it.nmfc):''}</td></tr>`
+  ).join('') : '';
+
+  const existing = document.getElementById('bkDetailOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'bkDetailOverlay';
+  overlay.className = 'bk-overlay';
+  overlay.innerHTML = `
+  <div class="bk-modal" style="max-width:640px;">
+    <!-- version: 2.7.0 | build: 202604142300 -->
+    <div class="bk-header">
+      <div>
+        <h2>📦 Booking Detail</h2>
+        <p>${esc(b.bookingId)} &nbsp;·&nbsp; ${esc(b.status||'Confirmed')}</p>
+      </div>
+      <button class="bk-close" onclick="document.getElementById('bkDetailOverlay').remove()">✕</button>
+    </div>
+    <div class="bk-body" style="padding:24px 28px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);margin-bottom:6px;">Booking ID</div>
+          <div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--blue);">${esc(b.bookingId)}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);margin-bottom:6px;">Linked IDs</div>
+          <div style="font-size:11px;color:var(--ink2);">Request: <span style="font-family:monospace;font-weight:700;">${esc(b.requestId)}</span></div>
+          <div style="font-size:11px;color:var(--ink2);">Quote: <span style="font-family:monospace;font-weight:700;">${esc(b.quoteId)}</span></div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;">
+        <tr style="background:var(--surface2);"><th colspan="2" style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);border-bottom:1px solid var(--border);">Route</th></tr>
+        <tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);width:120px;">Origin</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${origin}</td></tr>
+        <tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Destination</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${dest}</td></tr>
+        <tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Pickup Date</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.pickupDate||'—')}</td></tr>
+        <tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);">Freight Type</td><td style="padding:8px 12px;font-weight:600;">${esc(b.freightType||'—')}</td></tr>
+      </table>
+      ${itemRows ? `<table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;">
+        <tr style="background:var(--surface2);"><th colspan="2" style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);border-bottom:1px solid var(--border);">Shipment Items</th></tr>
+        ${itemRows}
+      </table>` : ''}
+      <div style="font-size:11px;color:var(--ink3);text-align:right;">Booked: ${b.createdAt ? fdt(b.createdAt) : '—'} &nbsp;·&nbsp; ${esc(b.clientEmail||'')}</div>
+    </div>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 // ─── BROKER DASHBOARD ─────────────────────────────────────────
 
 async function loadBrokerDashboard() {
@@ -1663,7 +1904,8 @@ async function loadBrokerDashboard() {
       <div class="page-head"><h1>Broker Dashboard</h1><p>Overview of your submitted quotes.</p></div>
       <div id="brokerDashContent"><div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div></div>
     </div>
-    <div class="panel" id="p-brokerQuotes"></div>`;
+    <div class="panel" id="p-brokerQuotes"></div>
+    <div class="panel" id="p-brokerBookings"></div>`;
   await renderBrokerDash();
 }
 
@@ -1839,6 +2081,7 @@ async function loadAdmin() {
     <div class="panel" id="p-adminBrokers"></div>
     <div class="panel" id="p-adminRequests"></div>
     <div class="panel" id="p-adminAllQuotes"></div>
+    <div class="panel" id="p-adminBookings"></div>
     <div class="panel" id="p-adminSettings"></div>
     <div class="panel" id="p-adminTemplates"></div>`;
 
