@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.2 | build: 202604142500 -->
+<!-- version: 2.7.3 | build: 202604142600 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -548,7 +548,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.2 — 202604142500';
+  out.textContent = 'v2.7.3 — 202604142600';
 }
 
 async function sendOTP() {
@@ -740,19 +740,19 @@ async function loadClient() {
       <div id="reqMsg"></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;">
         <div class="form-grid">
-          <div class="ff"><label>Origin City / State <span id="fOSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label><input type="text" id="fO" placeholder="Los Angeles, CA" oninput="this.dataset.autoFilled='false'"></div>
           <div class="ff"><label>Origin ZIP</label><input type="text" id="fOZ" placeholder="90001" maxlength="10"
             onchange="lookupZip(this.value,'fO',null,'fOSpin')"
             onkeyup="if(this.value.length===5)lookupZip(this.value,'fO',null,'fOSpin')"></div>
+          <div class="ff"><label>Origin City / State <span id="fOSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label><input type="text" id="fO" placeholder="Los Angeles, CA" oninput="this.dataset.autoFilled='false'"></div>
           <div class="span-2" style="display:flex;align-items:center;gap:12px;padding:2px 0;">
             <div style="flex:1;height:1px;background:var(--border);"></div>
             <span style="color:var(--ink3);font-size:13px;">to destination</span>
             <div style="flex:1;height:1px;background:var(--border);"></div>
           </div>
-          <div class="ff"><label>Destination City / State <span id="fDSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label><input type="text" id="fD" placeholder="Chicago, IL" oninput="this.dataset.autoFilled='false'"></div>
           <div class="ff"><label>Destination ZIP</label><input type="text" id="fDZ" placeholder="60601" maxlength="10"
             onchange="lookupZip(this.value,'fD',null,'fDSpin')"
             onkeyup="if(this.value.length===5)lookupZip(this.value,'fD',null,'fDSpin')"></div>
+          <div class="ff"><label>Destination City / State <span id="fDSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label><input type="text" id="fD" placeholder="Chicago, IL" oninput="this.dataset.autoFilled='false'"></div>
           <div class="ff span-2">
             <label>Freight Type</label>
             <div class="freight-sel">
