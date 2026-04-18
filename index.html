@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.6.1 | build: 202604161400 -->
+<!-- version: 2.7.7 | build: 202604161500 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -548,7 +548,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.6.1 — 202604161400';
+  out.textContent = 'v2.7.7 — 202604161500';
 }
 
 async function sendOTP() {
@@ -616,10 +616,19 @@ function launch() {
     if (window._pendingInviteData) {
       setTimeout(() => showInviteBanner(window._pendingInviteData), 800);
     }
-    // Check org status and nudge if no org set up
+    // Check org status and profile completeness on login
     api({action:'getClientData', email:S.email, token:S.token}).then(r => {
-      if (r.success && r.profile && !r.profile.orgId) {
-        setTimeout(() => showOrgNudge(), 600);
+      if (!r.success) return;
+      const p = r.profile || {};
+      if (!p.orgId) setTimeout(() => showOrgNudge(), 600);
+      if (!p.firstName || !p.lastName || !p.phone) {
+        // Redirect to My Profile and show prompt
+        setTimeout(() => {
+          setNav(document.getElementById('n-clientSettings'), 'clientSettings');
+          loadClientSettings().then(() => {
+            msg('profileMsg', '⚠️ Please complete your profile — First Name, Last Name and Phone Number are required.', 'error');
+          });
+        }, 400);
       }
     }).catch(()=>{});
   }
@@ -2939,10 +2948,10 @@ async function loadClientSettings() {
       <div class="profile-section">
         <h3>Contact Information</h3>
         <div class="profile-grid">
-          <div class="ff"><label>First Name</label><input type="text" id="pFirst" value="${esc(p.firstName||'')}" placeholder="Jane"></div>
-          <div class="ff"><label>Last Name</label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Smith"></div>
+          <div class="ff"><label>First Name <span style="color:var(--red)">*</span></label><input type="text" id="pFirst" value="${esc(p.firstName||'')}" placeholder="Jane" onblur="validateProfileField('pFirst','profileMsg','First Name')"></div>
+          <div class="ff"><label>Last Name <span style="color:var(--red)">*</span></label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Smith" onblur="validateProfileField('pLast','profileMsg','Last Name')"></div>
           <div class="ff"><label>Company Name</label><input type="text" id="pCo" value="${esc(p.company||'')}" placeholder="Acme Corp"></div>
-          <div class="ff"><label>Phone Number</label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000"></div>
+          <div class="ff"><label>Phone Number <span style="color:var(--red)">*</span></label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000" onblur="validateProfileField('pPhone','profileMsg','Phone Number')"></div>
           <div class="ff span-2"><label>Email Address</label><input type="email" value="${esc(S.email)}" disabled style="background:var(--surface2);color:var(--ink3);cursor:not-allowed;"></div>
         </div>
       </div>
@@ -3116,7 +3125,23 @@ async function removeMember(targetEmail) {
   }
 }
 
+function validateProfileField(fieldId, msgId, label) {
+  const el = document.getElementById(fieldId);
+  if (!el) return true;
+  if (!el.value.trim()) {
+    el.style.borderColor = 'var(--red)';
+    msg(msgId, `${label} is required.`, 'error');
+    return false;
+  }
+  el.style.borderColor = '';
+  return true;
+}
+
 async function saveProfile() {
+  const ok = validateProfileField('pFirst','profileMsg','First Name') &
+             validateProfileField('pLast', 'profileMsg','Last Name')  &
+             validateProfileField('pPhone','profileMsg','Phone Number');
+  if (!ok) return;
   const profile = {
     firstName: document.getElementById('pFirst').value.trim(),
     lastName:  document.getElementById('pLast').value.trim(),
@@ -3130,6 +3155,7 @@ async function saveProfile() {
   if (r.success) {
     userTz = profile.timezone || '';
     msg('profileMsg','✓ Profile saved successfully.','success');
+    ['pFirst','pLast','pPhone'].forEach(id => { const el=document.getElementById(id); if(el) el.style.borderColor=''; });
   } else {
     msg('profileMsg', r.error, 'error');
   }
