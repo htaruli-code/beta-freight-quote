@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.7 | build: 202604161500 -->
+<!-- version: 2.7.8 | build: 202604161600 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -548,7 +548,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.7 — 202604161500';
+  out.textContent = 'v2.7.8 — 202604161600';
 }
 
 async function sendOTP() {
@@ -622,12 +622,9 @@ function launch() {
       const p = r.profile || {};
       if (!p.orgId) setTimeout(() => showOrgNudge(), 600);
       if (!p.firstName || !p.lastName || !p.phone) {
-        // Redirect to My Profile and show prompt
         setTimeout(() => {
           setNav(document.getElementById('n-clientSettings'), 'clientSettings');
-          loadClientSettings().then(() => {
-            msg('profileMsg', '⚠️ Please complete your profile — First Name, Last Name and Phone Number are required.', 'error');
-          });
+          loadClientSettings('⚠️ Please complete your profile — First Name, Last Name and Phone Number are required.');
         }, 400);
       }
     }).catch(()=>{});
@@ -2926,7 +2923,7 @@ function paginationBar(page, totalPages, totalRecords, callbackName) {
 }
 
 // ─── CLIENT PROFILE ───────────────────────────────────────────
-async function loadClientSettings() {
+async function loadClientSettings(showMsg) {
   const el = document.getElementById('p-clientSettings');
   if (!el) return;
   el.innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
@@ -2974,6 +2971,7 @@ async function loadClientSettings() {
       <div id="teamMsg"></div>
       <div id="teamPanelInner"><div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div></div>
     </div>`;
+  if (showMsg) msg('profileMsg', showMsg, 'error');
   loadTeamPanel(p);
 }
 
