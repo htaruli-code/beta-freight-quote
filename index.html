@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.5 | build: 202604151200 -->
+<!-- version: 2.7.6 | build: 202604161100 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -548,7 +548,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.5 — 202604151200';
+  out.textContent = 'v2.7.6 — 202604161100';
 }
 
 async function sendOTP() {
@@ -616,6 +616,12 @@ function launch() {
     if (window._pendingInviteData) {
       setTimeout(() => showInviteBanner(window._pendingInviteData), 800);
     }
+    // Check org status and nudge if no org set up
+    api({action:'getClientData', email:S.email, token:S.token}).then(r => {
+      if (r.success && r.profile && !r.profile.orgId) {
+        setTimeout(() => showOrgNudge(), 600);
+      }
+    }).catch(()=>{});
   }
 }
 
@@ -633,6 +639,28 @@ function showInviteBanner(invite) {
     <div style="display:flex;gap:8px;flex-shrink:0;">
       <button onclick="setNav(document.getElementById('n-clientTeam'),'clientSettings');setTimeout(()=>switchProfileTab('team'),200)" style="padding:8px 16px;background:var(--blue);color:white;border:none;border-radius:7px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">View Invite</button>
       <button onclick="document.getElementById('inviteBanner').remove()" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:7px;font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;">✕</button>
+    </div>`;
+  mc.insertBefore(banner, mc.firstChild);
+}
+
+function showOrgNudge() {
+  if (document.getElementById('orgNudgeBanner')) return; // already showing
+  const mc = document.getElementById('mainContent');
+  if (!mc) return;
+  const banner = document.createElement('div');
+  banner.id = 'orgNudgeBanner';
+  banner.style.cssText = 'background:#fff8f0;border:1.5px solid #ffd0a0;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;';
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:26px;">🏢</span>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:#0A2540;">No Organisation set up yet</div>
+        <div style="font-size:13px;color:var(--ink2);margin-top:2px;">Create an organisation to share requests with your team and manage bookings together.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="loadClientSettings().then(()=>switchProfileTab('team'));setNav(document.getElementById('n-clientTeam'),'clientSettings');" style="padding:9px 18px;background:#FF6200;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Set Up Organisation →</button>
+      <button onclick="document.getElementById('orgNudgeBanner').remove()" style="padding:9px 12px;background:transparent;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;color:var(--ink2);">✕</button>
     </div>`;
   mc.insertBefore(banner, mc.firstChild);
 }
@@ -761,7 +789,7 @@ async function loadClient() {
           </div>
           <div class="ff"><label>Weight (lbs)</label><input type="number" id="fW" placeholder="20000"></div>
           <div class="ff"><label>Pickup Date (optional)</label><input type="date" id="fPD"></div>
-          <div class="ff span-2"><label>Notes (optional)</label><textarea id="fN" placeholder="Example: 2 pallets of 600 lbs each. Dims 40 x 48 x 30. Special handling, hazmat, temperature requirements…"></textarea></div>
+          <div class="ff span-2"><label>Notes (optional)</label><textarea id="fN" placeholder="Special handling, hazmat, temperature requirements…"></textarea></div>
           <div class="ff span-2">
             <label>Pickup &amp; Delivery Accessories <span style="font-weight:400;color:var(--ink3);">(select all that apply)</span></label>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
