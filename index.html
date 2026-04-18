@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.8 | build: 202604161600 -->
+<!-- version: 2.7.9 | build: 202604171000 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -491,7 +491,8 @@ tbody tr:hover td{background:var(--bg);}
     <h3 id="brokerModalTitle">Add Freight Broker / Vendor</h3>
     <input type="hidden" id="brokerEditId" value="">
     <div class="ff"><label>Company Name</label><input type="text" id="brokerCo" placeholder="FastHaul Logistics LLC"></div>
-    <div class="ff"><label>Email Address</label><input type="email" id="brokerEmail" placeholder="quotes@fasthaul.com"></div>
+    <div class="ff"><label>Primary Email</label><input type="email" id="brokerEmail" placeholder="quotes@fasthaul.com"></div>
+    <div class="ff"><label>Second Email <span style="font-weight:400;color:var(--ink3);">(optional — also receives requests &amp; can login)</span></label><input type="email" id="brokerEmail2" placeholder="ops@fasthaul.com"></div>
     <div class="ff">
       <label>Freight Types Serviced</label>
       <div id="brokerFtBtns" class="freight-sel" style="margin-top:6px;"></div>
@@ -548,7 +549,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.8 — 202604161600';
+  out.textContent = 'v2.7.9 — 202604171000';
 }
 
 async function sendOTP() {
@@ -2390,9 +2391,12 @@ async function loadBrokerPanel() {
       const ftChips = b.freightTypes && b.freightTypes.length
         ? b.freightTypes.map(t => `<span class="badge b-neutral" style="margin:1px 2px;font-size:10px;">${t}</span>`).join('')
         : '<span style="color:var(--ink3);font-size:12px;">All types</span>';
+      const emailCell = b.email2
+        ? `${esc(b.email)}<br><span style="font-size:11px;color:var(--ink3);">+ ${esc(b.email2)}</span>`
+        : esc(b.email);
       th += `<tr>
         <td style="font-weight:600;">${b.company}</td>
-        <td style="font-size:12px;color:var(--ink2);">${b.email}</td>
+        <td style="font-size:12px;color:var(--ink2);">${emailCell}</td>
         <td style="max-width:180px;">${ftChips}</td>
         <td>${b.quoteCount}</td>
         <td>${b.acceptedCount} <span style="color:var(--ink3);font-size:12px;">(${rate}%)</span></td>
@@ -2414,6 +2418,7 @@ function openAddBrokerModal() {
   document.getElementById('brokerEditId').value = '';
   document.getElementById('brokerCo').value = '';
   document.getElementById('brokerEmail').value = '';
+  document.getElementById('brokerEmail2').value = '';
   document.getElementById('brokerConfirmBtn').textContent = 'Add Broker';
   buildBrokerFtBtns([]);
   openModal('brokerModal');
@@ -2424,6 +2429,7 @@ function openEditBrokerModal(b) {
   document.getElementById('brokerEditId').value = b.id;
   document.getElementById('brokerCo').value = b.company || '';
   document.getElementById('brokerEmail').value = b.email || '';
+  document.getElementById('brokerEmail2').value = b.email2 || '';
   document.getElementById('brokerConfirmBtn').textContent = 'Save Changes';
   buildBrokerFtBtns(b.freightTypes || []);
   openModal('brokerModal');
@@ -2816,11 +2822,12 @@ async function addEmployee() {
 async function saveBroker() {
   const co  = document.getElementById('brokerCo').value.trim();
   const em  = document.getElementById('brokerEmail').value.trim();
+  const em2 = document.getElementById('brokerEmail2').value.trim();
   const bid = document.getElementById('brokerEditId').value.trim();
   const fts = getSelectedBrokerFts();
   if (!co||!em) return msg('brokerModalMsg','Fill in company name and email.','error');
   setBtnLoad('brokerConfirmBtn','Saving…');
-  const payload = {action:'adminSaveBroker', email:S.email, token:S.token, brokerEmail:em, brokerCompany:co, freightTypes:fts};
+  const payload = {action:'adminSaveBroker', email:S.email, token:S.token, brokerEmail:em, brokerCompany:co, freightTypes:fts, email2:em2};
   if (bid) payload.brokerId = bid;
   const r = await api(payload);
   resetBtn('brokerConfirmBtn', bid ? 'Save Changes' : 'Add Broker');
