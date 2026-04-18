@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.6 | build: 202604161100 -->
+<!-- version: 2.7.6.1 | build: 202604161400 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -548,7 +548,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.6 — 202604161100';
+  out.textContent = 'v2.7.6.1 — 202604161400';
 }
 
 async function sendOTP() {
@@ -1187,7 +1187,8 @@ async function loadClientDash() {
   if (!r.success) { document.getElementById('p-clientDash').innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
 
   const noOrg = !(r.profile && r.profile.orgId);
-  const orgNudge = noOrg ? `
+  const alreadyShowing = !!document.getElementById('orgNudgeBanner');
+  const orgNudge = (noOrg && !alreadyShowing) ? `
     <div id="orgNudgeBanner" style="background:#fff8f0;border:1.5px solid #ffd0a0;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:12px;">
         <span style="font-size:28px;">🏢</span>
