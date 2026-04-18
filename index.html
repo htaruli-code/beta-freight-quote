@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.6 | build: 202604161100 -->
+<!-- version: 2.7.7 | build: 202604161300 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -548,7 +548,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.6 — 202604161100';
+  out.textContent = 'v2.7.7 — 202604161300';
 }
 
 async function sendOTP() {
@@ -616,11 +616,12 @@ function launch() {
     if (window._pendingInviteData) {
       setTimeout(() => showInviteBanner(window._pendingInviteData), 800);
     }
-    // Check org status and nudge if no org set up
+    // Check org status and profile completeness — nudge if missing
     api({action:'getClientData', email:S.email, token:S.token}).then(r => {
-      if (r.success && r.profile && !r.profile.orgId) {
-        setTimeout(() => showOrgNudge(), 600);
-      }
+      if (!r.success) return;
+      const p = r.profile || {};
+      if (!p.orgId) setTimeout(() => showOrgNudge(), 600);
+      if (!p.firstName || !p.lastName || !p.phone) setTimeout(() => showProfileNudge(), p.orgId ? 600 : 900);
     }).catch(()=>{});
   }
 }
@@ -643,7 +644,27 @@ function showInviteBanner(invite) {
   mc.insertBefore(banner, mc.firstChild);
 }
 
-function showOrgNudge() {
+function showProfileNudge() {
+  if (document.getElementById('profileNudgeBanner')) return;
+  const mc = document.getElementById('mainContent');
+  if (!mc) return;
+  const banner = document.createElement('div');
+  banner.id = 'profileNudgeBanner';
+  banner.style.cssText = 'background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;';
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:26px;">👤</span>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:#1e40af;">Profile incomplete</div>
+        <div style="font-size:13px;color:var(--ink2);margin-top:2px;">Please add your <strong>First Name</strong>, <strong>Last Name</strong> and <strong>Phone Number</strong> to complete your profile.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="setNav(document.getElementById('n-clientSettings'),'clientSettings')" style="padding:9px 18px;background:#1d4ed8;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Complete Profile →</button>
+      <button onclick="document.getElementById('profileNudgeBanner').remove()" style="padding:9px 12px;background:transparent;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;color:var(--ink2);">✕</button>
+    </div>`;
+  mc.insertBefore(banner, mc.firstChild);
+}
   if (document.getElementById('orgNudgeBanner')) return; // already showing
   const mc = document.getElementById('mainContent');
   if (!mc) return;
@@ -2938,10 +2959,10 @@ async function loadClientSettings() {
       <div class="profile-section">
         <h3>Contact Information</h3>
         <div class="profile-grid">
-          <div class="ff"><label>First Name</label><input type="text" id="pFirst" value="${esc(p.firstName||'')}" placeholder="Jane"></div>
-          <div class="ff"><label>Last Name</label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Smith"></div>
+          <div class="ff"><label>First Name <span style="color:var(--red)">*</span></label><input type="text" id="pFirst" value="${esc(p.firstName||'')}" placeholder="Jane"></div>
+          <div class="ff"><label>Last Name <span style="color:var(--red)">*</span></label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Smith"></div>
           <div class="ff"><label>Company Name</label><input type="text" id="pCo" value="${esc(p.company||'')}" placeholder="Acme Corp"></div>
-          <div class="ff"><label>Phone Number</label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000"></div>
+          <div class="ff"><label>Phone Number <span style="color:var(--red)">*</span></label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000"></div>
           <div class="ff span-2"><label>Email Address</label><input type="email" value="${esc(S.email)}" disabled style="background:var(--surface2);color:var(--ink3);cursor:not-allowed;"></div>
         </div>
       </div>
@@ -3123,12 +3144,17 @@ async function saveProfile() {
     phone:     document.getElementById('pPhone').value.trim(),
     timezone:  document.getElementById('pTz').value
   };
+  if (!profile.firstName) return msg('profileMsg','First Name is required.','error');
+  if (!profile.lastName)  return msg('profileMsg','Last Name is required.','error');
+  if (!profile.phone)     return msg('profileMsg','Phone Number is required.','error');
   setBtnLoad('saveProfileBtn','Saving…');
   const r = await api({action:'saveUserProfile', email:S.email, token:S.token, profile});
   resetBtn('saveProfileBtn','Save Profile');
   if (r.success) {
     userTz = profile.timezone || '';
     msg('profileMsg','✓ Profile saved successfully.','success');
+    const nudge = document.getElementById('profileNudgeBanner');
+    if (nudge) nudge.remove();
   } else {
     msg('profileMsg', r.error, 'error');
   }
@@ -3150,10 +3176,10 @@ async function loadBrokerSettings() {
     <div class="profile-section">
       <h3>Contact Information</h3>
       <div class="profile-grid">
-        <div class="ff"><label>First Name</label><input type="text" id="pFirst" value="${esc(p.firstName||'')}" placeholder="John"></div>
-        <div class="ff"><label>Last Name</label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Doe"></div>
+        <div class="ff"><label>First Name <span style="color:var(--red)">*</span></label><input type="text" id="pFirst" value="${esc(p.firstName||'')}" placeholder="John"></div>
+        <div class="ff"><label>Last Name <span style="color:var(--red)">*</span></label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Doe"></div>
         <div class="ff"><label>Company Name</label><input type="text" id="pCo" value="${esc(p.company||'')}" placeholder="FastHaul Logistics"></div>
-        <div class="ff"><label>Phone Number</label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000"></div>
+        <div class="ff"><label>Phone Number <span style="color:var(--red)">*</span></label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000"></div>
         <div class="ff span-2"><label>Email Address</label><input type="email" value="${esc(S.email)}" disabled style="background:var(--surface2);color:var(--ink3);cursor:not-allowed;"></div>
       </div>
     </div>
