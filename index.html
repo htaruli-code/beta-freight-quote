@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.7.9 | build: 202604171000 -->
+<!-- version: 2.8.0 | build: 202604181000 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -493,6 +493,8 @@ tbody tr:hover td{background:var(--bg);}
     <div class="ff"><label>Company Name</label><input type="text" id="brokerCo" placeholder="FastHaul Logistics LLC"></div>
     <div class="ff"><label>Primary Email</label><input type="email" id="brokerEmail" placeholder="quotes@fasthaul.com"></div>
     <div class="ff"><label>Second Email <span style="font-weight:400;color:var(--ink3);">(optional — also receives requests &amp; can login)</span></label><input type="email" id="brokerEmail2" placeholder="ops@fasthaul.com"></div>
+    <div class="ff"><label>USDOT Number <span style="font-weight:400;color:var(--ink3);">(optional)</span></label><input type="text" id="brokerUsdot" placeholder="e.g. 1234567"></div>
+    <div class="ff"><label>MC Number <span style="font-weight:400;color:var(--ink3);">(optional)</span></label><input type="text" id="brokerMc" placeholder="e.g. MC-123456"></div>
     <div class="ff">
       <label>Freight Types Serviced</label>
       <div id="brokerFtBtns" class="freight-sel" style="margin-top:6px;"></div>
@@ -549,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.7.9 — 202604171000';
+  out.textContent = 'v2.8.0 — 202604181000';
 }
 
 async function sendOTP() {
@@ -1108,10 +1110,11 @@ function renderBrokerSelector() {
   } else {
     brokerSelectorData.system.forEach(b => {
       const isExcluded = excluded.includes(b.email);
+      const credentials = [b.usdot ? `USDOT: ${b.usdot}` : '', b.mc ? `MC: ${b.mc}` : ''].filter(Boolean).join(' · ');
       h += `<div class="broker-row">
         <div class="broker-row-info">
           <div class="broker-row-name">${esc(b.company)}</div>
-          <div class="broker-row-email">${esc(b.email)}</div>
+          <div class="broker-row-email">${esc(b.email)}${credentials ? `<span style="color:var(--ink3);margin-left:6px;">· ${credentials}</span>` : ''}</div>
           ${b.freightTypes.length ? '<div class="broker-row-tags">' + b.freightTypes.map(t=>'<span class="broker-tag">'+esc(t)+'</span>').join('') + '</div>' : ''}
         </div>
         <button type="button" class="broker-exclude-btn ${isExcluded?'excluded':''}" onclick="toggleBrokerExclude('${esc(b.email)}',this)">
@@ -2415,10 +2418,12 @@ async function loadBrokerPanel() {
 
 function openAddBrokerModal() {
   document.getElementById('brokerModalTitle').textContent = 'Add Freight Broker / Vendor';
-  document.getElementById('brokerEditId').value = '';
-  document.getElementById('brokerCo').value = '';
-  document.getElementById('brokerEmail').value = '';
-  document.getElementById('brokerEmail2').value = '';
+  document.getElementById('brokerEditId').value   = '';
+  document.getElementById('brokerCo').value       = '';
+  document.getElementById('brokerEmail').value    = '';
+  document.getElementById('brokerEmail2').value   = '';
+  document.getElementById('brokerUsdot').value    = '';
+  document.getElementById('brokerMc').value       = '';
   document.getElementById('brokerConfirmBtn').textContent = 'Add Broker';
   buildBrokerFtBtns([]);
   openModal('brokerModal');
@@ -2426,10 +2431,12 @@ function openAddBrokerModal() {
 
 function openEditBrokerModal(b) {
   document.getElementById('brokerModalTitle').textContent = 'Edit Broker';
-  document.getElementById('brokerEditId').value = b.id;
-  document.getElementById('brokerCo').value = b.company || '';
-  document.getElementById('brokerEmail').value = b.email || '';
-  document.getElementById('brokerEmail2').value = b.email2 || '';
+  document.getElementById('brokerEditId').value   = b.id;
+  document.getElementById('brokerCo').value       = b.company  || '';
+  document.getElementById('brokerEmail').value    = b.email    || '';
+  document.getElementById('brokerEmail2').value   = b.email2   || '';
+  document.getElementById('brokerUsdot').value    = b.usdot    || '';
+  document.getElementById('brokerMc').value       = b.mc       || '';
   document.getElementById('brokerConfirmBtn').textContent = 'Save Changes';
   buildBrokerFtBtns(b.freightTypes || []);
   openModal('brokerModal');
@@ -2822,12 +2829,14 @@ async function addEmployee() {
 async function saveBroker() {
   const co  = document.getElementById('brokerCo').value.trim();
   const em  = document.getElementById('brokerEmail').value.trim();
-  const em2 = document.getElementById('brokerEmail2').value.trim();
-  const bid = document.getElementById('brokerEditId').value.trim();
-  const fts = getSelectedBrokerFts();
+  const em2  = document.getElementById('brokerEmail2').value.trim();
+  const usdot = document.getElementById('brokerUsdot').value.trim();
+  const mc    = document.getElementById('brokerMc').value.trim();
+  const bid  = document.getElementById('brokerEditId').value.trim();
+  const fts  = getSelectedBrokerFts();
   if (!co||!em) return msg('brokerModalMsg','Fill in company name and email.','error');
   setBtnLoad('brokerConfirmBtn','Saving…');
-  const payload = {action:'adminSaveBroker', email:S.email, token:S.token, brokerEmail:em, brokerCompany:co, freightTypes:fts, email2:em2};
+  const payload = {action:'adminSaveBroker', email:S.email, token:S.token, brokerEmail:em, brokerCompany:co, freightTypes:fts, email2:em2, usdot, mc};
   if (bid) payload.brokerId = bid;
   const r = await api(payload);
   resetBtn('brokerConfirmBtn', bid ? 'Save Changes' : 'Add Broker');
@@ -3152,7 +3161,11 @@ async function saveProfile() {
     lastName:  document.getElementById('pLast').value.trim(),
     company:   document.getElementById('pCo').value.trim(),
     phone:     document.getElementById('pPhone').value.trim(),
-    timezone:  document.getElementById('pTz').value
+    timezone:  document.getElementById('pTz').value,
+    // Broker-only fields — undefined for clients, backend ignores safely
+    email2:    document.getElementById('pEmail2')?.value.trim() || '',
+    usdot:     document.getElementById('pUsdot')?.value.trim()  || '',
+    mc:        document.getElementById('pMc')?.value.trim()     || ''
   };
   setBtnLoad('saveProfileBtn','Saving…');
   const r = await api({action:'saveUserProfile', email:S.email, token:S.token, profile});
@@ -3186,7 +3199,15 @@ async function loadBrokerSettings() {
         <div class="ff"><label>Last Name</label><input type="text" id="pLast" value="${esc(p.lastName||'')}" placeholder="Doe"></div>
         <div class="ff"><label>Company Name</label><input type="text" id="pCo" value="${esc(p.company||'')}" placeholder="FastHaul Logistics"></div>
         <div class="ff"><label>Phone Number</label><input type="tel" id="pPhone" value="${esc(p.phone||'')}" placeholder="+1 (555) 000-0000"></div>
-        <div class="ff span-2"><label>Email Address</label><input type="email" value="${esc(S.email)}" disabled style="background:var(--surface2);color:var(--ink3);cursor:not-allowed;"></div>
+        <div class="ff"><label>Primary Email</label><input type="email" value="${esc(S.email)}" disabled style="background:var(--surface2);color:var(--ink3);cursor:not-allowed;"></div>
+        <div class="ff"><label>Secondary Email <span style="font-weight:400;color:var(--ink3);">(also receives requests &amp; can login)</span></label><input type="email" id="pEmail2" value="${esc(p.email2||'')}" placeholder="ops@company.com"></div>
+      </div>
+    </div>
+    <div class="profile-section">
+      <h3>Carrier Credentials</h3>
+      <div class="profile-grid">
+        <div class="ff"><label>USDOT Number</label><input type="text" id="pUsdot" value="${esc(p.usdot||'')}" placeholder="e.g. 1234567"></div>
+        <div class="ff"><label>MC Number</label><input type="text" id="pMc" value="${esc(p.mc||'')}" placeholder="e.g. MC-123456"></div>
       </div>
     </div>
     <div class="profile-section">
