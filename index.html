@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.14.0 | build: 202604200900 -->
+<!-- version: 2.15.0 | build: 202604200930 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.14.0 — 202604200900';
+  out.textContent = 'v2.15.0 — 202604200930';
 }
 
 async function sendOTP() {
@@ -777,6 +777,12 @@ async function loadClient() {
       <div id="reqMsg"></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;">
         <div class="form-grid">
+          <div class="ff span-2" style="margin-bottom:4px;">
+            <label>Origin — Select from Address Book <span style="font-weight:400;color:var(--ink3);">(optional)</span></label>
+            <select id="fOriginAb" onchange="reqApplyAbOrigin(this.value)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--ink);background:var(--surface);outline:none;">
+              <option value="">— Select saved address —</option>
+            </select>
+          </div>
           <div class="ff"><label>Origin ZIP</label><input type="text" id="fOZ" placeholder="90001" maxlength="10"
             onchange="lookupZip(this.value,'fO',null,'fOSpin')"
             onkeyup="if(this.value.length===5)lookupZip(this.value,'fO',null,'fOSpin')"></div>
@@ -785,6 +791,12 @@ async function loadClient() {
             <div style="flex:1;height:1px;background:var(--border);"></div>
             <span style="color:var(--ink3);font-size:13px;">to destination</span>
             <div style="flex:1;height:1px;background:var(--border);"></div>
+          </div>
+          <div class="ff span-2" style="margin-bottom:4px;">
+            <label>Destination — Select from Address Book <span style="font-weight:400;color:var(--ink3);">(optional)</span></label>
+            <select id="fDestAb" onchange="reqApplyAbDest(this.value)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--ink);background:var(--surface);outline:none;">
+              <option value="">— Select saved address —</option>
+            </select>
           </div>
           <div class="ff"><label>Destination ZIP</label><input type="text" id="fDZ" placeholder="60601" maxlength="10"
             onchange="lookupZip(this.value,'fD',null,'fDSpin')"
@@ -855,6 +867,41 @@ function buildClientFtBtns() {
     `<button type="button" class="ft-btn" onclick="pickFT(this,'${ft}')">${ft}</button>`
   ).join('');
   selFreight = '';
+  reqPopulateAbDropdowns();
+}
+
+async function reqPopulateAbDropdowns() {
+  if (!_abLoaded) {
+    const r = await api({ action:'getAddressBook', email:S.email, token:S.token });
+    if (r.success) { _abEntries = r.entries || []; _abLoaded = true; }
+  }
+  const opts = _abEntries.length
+    ? _abEntries.map((e, i) => {
+        const label = [e.companyName, e.city, e.state, e.zipCode].filter(Boolean).join(', ');
+        return `<option value="${i}">${esc(label)}</option>`;
+      }).join('')
+    : '<option value="" disabled style="color:var(--ink3);">No saved addresses yet</option>';
+  const placeholder = '<option value="">— Select saved address —</option>';
+  ['fOriginAb','fDestAb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = placeholder + opts;
+  });
+}
+
+function reqApplyAbOrigin(idx) {
+  if (idx === '') return;
+  const e = _abEntries[parseInt(idx)]; if (!e) return;
+  const cityState = [e.city, e.state].filter(Boolean).join(', ');
+  const fOZ = document.getElementById('fOZ'); if (fOZ) { fOZ.value = e.zipCode || ''; }
+  const fO  = document.getElementById('fO');  if (fO)  { fO.value  = cityState; fO.dataset.autoFilled = 'true'; }
+}
+
+function reqApplyAbDest(idx) {
+  if (idx === '') return;
+  const e = _abEntries[parseInt(idx)]; if (!e) return;
+  const cityState = [e.city, e.state].filter(Boolean).join(', ');
+  const fDZ = document.getElementById('fDZ'); if (fDZ) { fDZ.value = e.zipCode || ''; }
+  const fD  = document.getElementById('fD');  if (fD)  { fD.value  = cityState; fD.dataset.autoFilled = 'true'; }
 }
 
 function toggleAccLabel(cb, lblId) {
@@ -913,6 +960,7 @@ async function submitRequest() {
     msg('reqMsg','✓ Request sent! Brokers have been notified.','success');
     msg('reqMsgBottom','✓ Request sent! Brokers have been notified.','success');
     ['fO','fOZ','fD','fDZ','fW','fN','fQNB'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    ['fOriginAb','fDestAb'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     resetAccessories();
     buildClientFtBtns(); selFreight = '';
   } else {
@@ -1554,7 +1602,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.14.0 | build: 202604200900 -->
+    <!-- version: 2.15.0 | build: 202604200930 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -2076,7 +2124,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.7.1 | build: 202604142400 -->
+    <!-- version: 2.15.0 | build: 202604200930 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
@@ -2098,8 +2146,14 @@ function showBookingDetail(b) {
       </div>
       <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;">
         <tr style="background:var(--surface2);"><th colspan="2" style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);border-bottom:1px solid var(--border);">Route</th></tr>
-        <tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);width:120px;">Origin</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${origin}</td></tr>
+        <tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);width:140px;">Origin</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${origin}</td></tr>
+        ${(b.originPickupFrom||b.originPickupTo) ? `<tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Pickup Hours</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.originPickupFrom||'')}${b.originPickupTo?' – '+esc(b.originPickupTo):''}</td></tr>` : ''}
+        ${b.originContact ? `<tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Pickup Contact</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.originContact)}${b.originPhone?' · '+esc(b.originPhone):''}</td></tr>` : ''}
+        ${b.originRef ? `<tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Pickup Ref #</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.originRef)}</td></tr>` : ''}
         <tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Destination</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${dest}</td></tr>
+        ${(b.destDeliveryFrom||b.destDeliveryTo) ? `<tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Delivery Hours</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.destDeliveryFrom||'')}${b.destDeliveryTo?' – '+esc(b.destDeliveryTo):''}</td></tr>` : ''}
+        ${b.destContact ? `<tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Delivery Contact</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.destContact)}${b.destPhone?' · '+esc(b.destPhone):''}</td></tr>` : ''}
+        ${b.destRef ? `<tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Delivery Ref #</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(b.destRef)}</td></tr>` : ''}
         <tr><td style="padding:8px 12px;color:var(--ink2);border-bottom:1px solid var(--border);">Pickup Date</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border);">${esc(pickupDisplay)}</td></tr>
         <tr style="background:var(--surface2);"><td style="padding:8px 12px;color:var(--ink2);">Freight Type</td><td style="padding:8px 12px;font-weight:600;">${esc(b.freightType||'—')}</td></tr>
       </table>
