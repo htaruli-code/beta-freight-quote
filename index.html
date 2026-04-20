@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.9.0 — 202604181000';
+  out.textContent = 'v2.10.0 — 202604190900';
 }
 
 async function sendOTP() {
@@ -826,11 +826,7 @@ async function loadClient() {
               <div style="font-size:13px;color:var(--ink3);font-style:italic;">Select a freight type to see available vendors.</div>
             </div>
           </div>
-          <div class="ff span-2">
-            <label>Send to Additional Brokers <span style="font-weight:400;color:var(--ink3);">(one-time, not saved)</span></label>
-            <div id="adHocBrokerList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
-            <button type="button" onclick="adHocAddRow()" style="padding:7px 14px;border:1.5px dashed var(--border);border-radius:8px;background:transparent;color:var(--ink2);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;">+ Add one-time broker</button>
-          </div>
+
         </div>
         <div class="form-submit"><button class="btn-submit" id="reqBtn" onclick="submitRequest()">Send to Brokers →</button></div>
         <div id="reqMsgBottom" style="margin-top:10px;"></div>
@@ -895,7 +891,6 @@ async function submitRequest() {
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Sending…';
   const excludedBrokers = getExcludedBrokers();
   const customBrokers   = getSelectedCustomBrokers();
-  const adHocBrokers    = getAdHocBrokers();
   const payload = {};
   payload.action          = 'submitRequest';
   payload.email           = S.email;
@@ -910,7 +905,6 @@ async function submitRequest() {
   payload.accessories     = getAccessories();
   payload.excludedBrokers = excludedBrokers;
   payload.customBrokers   = customBrokers;
-  payload.adHocBrokers    = adHocBrokers;
   const r = await api(payload);
   btn.disabled = false; btn.textContent = 'Send to Brokers →';
   if (r.success) {
@@ -918,7 +912,6 @@ async function submitRequest() {
     msg('reqMsgBottom','✓ Request sent! Brokers have been notified.','success');
     ['fO','fOZ','fD','fDZ','fW','fN'].forEach(id => document.getElementById(id).value = '');
     resetAccessories();
-    resetAdHocBrokers();
     buildClientFtBtns(); selFreight = '';
   } else {
     msg('reqMsg', r.error,'error');
@@ -1196,45 +1189,6 @@ async function removeCustomBroker(id, btn) {
   }
 }
 
-// ─── AD-HOC (ONE-TIME) BROKERS ────────────────────────────────
-let _adHocRows = [];
-
-function adHocAddRow() {
-  const id  = 'ah-' + Date.now();
-  _adHocRows.push(id);
-  const list = document.getElementById('adHocBrokerList');
-  if (!list) return;
-  const row = document.createElement('div');
-  row.id = id;
-  row.style.cssText = 'display:flex;gap:8px;align-items:center;';
-  row.innerHTML = `
-    <input type="email" placeholder="broker@example.com" style="flex:1.2;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;" class="ah-email">
-    <input type="text"  placeholder="Company name (optional)" style="flex:1.5;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;" class="ah-name">
-    <button type="button" onclick="adHocRemoveRow('${id}')" style="padding:8px 10px;background:var(--red-bg);border:1px solid rgba(192,57,43,.2);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;">✕</button>`;
-  list.appendChild(row);
-}
-
-function adHocRemoveRow(id) {
-  _adHocRows = _adHocRows.filter(r => r !== id);
-  const el = document.getElementById(id);
-  if (el) el.remove();
-}
-
-function getAdHocBrokers() {
-  return _adHocRows.map(id => {
-    const row = document.getElementById(id);
-    if (!row) return null;
-    const email = row.querySelector('.ah-email')?.value.trim();
-    const name  = row.querySelector('.ah-name')?.value.trim();
-    return email ? { email, company: name || email } : null;
-  }).filter(Boolean);
-}
-
-function resetAdHocBrokers() {
-  _adHocRows = [];
-  const list = document.getElementById('adHocBrokerList');
-  if (list) list.innerHTML = '';
-}
 
 async function loadClientDash() {
   document.getElementById('p-clientDash').innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
