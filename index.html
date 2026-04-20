@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.15.1 | build: 202604200945 -->
+<!-- version: 2.15.2 | build: 202604201030 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.15.1 — 202604200945';
+  out.textContent = 'v2.15.2 — 202604201030';
 }
 
 async function sendOTP() {
@@ -851,6 +851,7 @@ async function loadClient() {
     <div class="panel" id="p-clientSettings"></div>`;
   // Build freight type buttons AFTER innerHTML is set so the DOM element exists
   buildClientFtBtns();
+  reqPopulateAbDropdowns();
 }
 
 function pickFT(btn, type) {
@@ -867,14 +868,18 @@ function buildClientFtBtns() {
     `<button type="button" class="ft-btn" onclick="pickFT(this,'${ft}')">${ft}</button>`
   ).join('');
   selFreight = '';
-  reqPopulateAbDropdowns();
 }
 
 async function reqPopulateAbDropdowns() {
   if (!_abLoaded) {
-    const r = await api({ action:'getAddressBook', email:S.email, token:S.token });
-    if (r.success) { _abEntries = r.entries || []; _abLoaded = true; }
+    try {
+      const r = await api({ action:'getAddressBook', email:S.email, token:S.token });
+      if (r.success) { _abEntries = r.entries || []; _abLoaded = true; }
+    } catch(e) { return; }
   }
+  const el1 = document.getElementById('fOriginAb');
+  const el2 = document.getElementById('fDestAb');
+  if (!el1 && !el2) return;
   const opts = _abEntries.length
     ? _abEntries.map((e, i) => {
         const label = [e.companyName, e.city, e.state, e.zipCode].filter(Boolean).join(', ');
@@ -882,10 +887,8 @@ async function reqPopulateAbDropdowns() {
       }).join('')
     : '<option value="" disabled style="color:var(--ink3);">No saved addresses yet</option>';
   const placeholder = '<option value="">— Select saved address —</option>';
-  ['fOriginAb','fDestAb'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = placeholder + opts;
-  });
+  if (el1) el1.innerHTML = placeholder + opts;
+  if (el2) el2.innerHTML = placeholder + opts;
 }
 
 function reqApplyAbOrigin(idx) {
@@ -976,8 +979,8 @@ let _abLoaded  = false;
 async function loadAddressBook() {
   const el = document.getElementById('p-clientAddrBook');
   if (!el) return;
-  // Only rebuild the shell if not already loaded
-  if (!_abLoaded) {
+  // Always render shell immediately — no blank page
+  if (!document.getElementById('abListWrap')) {
     el.innerHTML = `
     <div class="page-head">
       <h1>Address Book</h1>
@@ -989,6 +992,8 @@ async function loadAddressBook() {
     </div>
     <div id="abFormWrap"></div>
     <div id="abListWrap"><div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div></div>`;
+  }
+  if (!_abLoaded) {
     const r = await api({ action:'getAddressBook', email:S.email, token:S.token });
     if (!r.success) { document.getElementById('abListWrap').innerHTML = `<div class="alert alert-error">${esc(r.error)}</div>`; return; }
     _abEntries = r.entries || [];
@@ -1602,7 +1607,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.15.1 | build: 202604200945 -->
+    <!-- version: 2.15.2 | build: 202604201030 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -2124,7 +2129,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.15.1 | build: 202604200945 -->
+    <!-- version: 2.15.2 | build: 202604201030 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
