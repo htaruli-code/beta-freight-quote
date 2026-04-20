@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.13.0 | build: 202604191300 -->
+<!-- version: 2.14.0 | build: 202604200900 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.13.0 — 202604191300';
+  out.textContent = 'v2.14.0 — 202604200900';
 }
 
 async function sendOTP() {
@@ -967,6 +967,8 @@ function abRenderList() {
         ${e.email        ? `<div style="font-size:13px;color:var(--ink2);margin-bottom:2px;">✉️ ${esc(e.email)}</div>` : ''}
         ${e.phone        ? `<div style="font-size:13px;color:var(--ink2);margin-bottom:2px;">📞 ${esc(e.phone)}</div>` : ''}
         ${addr           ? `<div style="font-size:13px;color:var(--ink2);margin-top:4px;">📍 ${esc(addr)}</div>` : ''}
+        ${(e.pickupFrom||e.pickupTo) ? `<div style="font-size:12px;color:var(--ink3);margin-top:3px;">🕐 Pickup: ${esc(e.pickupFrom||'—')} – ${esc(e.pickupTo||'—')}</div>` : ''}
+        ${(e.deliveryFrom||e.deliveryTo) ? `<div style="font-size:12px;color:var(--ink3);margin-top:1px;">🕐 Delivery: ${esc(e.deliveryFrom||'—')} – ${esc(e.deliveryTo||'—')}</div>` : ''}
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;">
         <button onclick="abShowForm(${JSON.stringify(e).replace(/"/g,'&quot;')})" style="padding:6px 12px;border:1.5px solid var(--border);background:transparent;border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;">Edit</button>
@@ -995,6 +997,22 @@ function abShowForm(entry) {
         <div class="ff"><label>City</label><input type="text" id="ab_city" value="${esc(e.city||'')}" placeholder="Chicago"></div>
         <div class="ff"><label>State</label><input type="text" id="ab_state" value="${esc(e.state||'')}" placeholder="IL" maxlength="2"></div>
         <div class="ff"><label>ZIP Code</label><input type="text" id="ab_zip" value="${esc(e.zipCode||'')}" placeholder="60601" maxlength="10"></div>
+        <div class="ff span-2" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);">Pickup Hours</label>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+            <div style="flex:1;">${_timeSelect('ab_pickupFrom', e.pickupFrom||'')}</div>
+            <span style="color:var(--ink3);font-size:13px;">to</span>
+            <div style="flex:1;">${_timeSelect('ab_pickupTo', e.pickupTo||'')}</div>
+          </div>
+        </div>
+        <div class="ff span-2">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);">Delivery Hours</label>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+            <div style="flex:1;">${_timeSelect('ab_deliveryFrom', e.deliveryFrom||'')}</div>
+            <span style="color:var(--ink3);font-size:13px;">to</span>
+            <div style="flex:1;">${_timeSelect('ab_deliveryTo', e.deliveryTo||'')}</div>
+          </div>
+        </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn-confirm" onclick="abSave('${esc(e.entryId||'')}')">Save Address</button>
@@ -1029,7 +1047,11 @@ async function abSave(entryId) {
     addressLine2:  v('ab_addr2'),
     city:          v('ab_city'),
     state:         v('ab_state'),
-    zipCode:       v('ab_zip')
+    zipCode:       v('ab_zip'),
+    pickupFrom:    document.getElementById('ab_pickupFrom')?.value || '',
+    pickupTo:      document.getElementById('ab_pickupTo')?.value   || '',
+    deliveryFrom:  document.getElementById('ab_deliveryFrom')?.value || '',
+    deliveryTo:    document.getElementById('ab_deliveryTo')?.value   || ''
   };
   const r = await api(payload);
   if (r.success) {
@@ -1043,7 +1065,11 @@ async function abSave(entryId) {
       addressLine2:  payload.addressLine2,
       city:          payload.city,
       state:         payload.state,
-      zipCode:       payload.zipCode
+      zipCode:       payload.zipCode,
+      pickupFrom:    payload.pickupFrom,
+      pickupTo:      payload.pickupTo,
+      deliveryFrom:  payload.deliveryFrom,
+      deliveryTo:    payload.deliveryTo
     };
     if (entryId) {
       // Update existing entry in local array
@@ -1071,6 +1097,23 @@ async function abDelete(entryId) {
     const m = document.getElementById('abMsg');
     if (m) m.innerHTML = `<div class="alert alert-error">${esc(r.error)}</div>`;
   }
+}
+
+function _timeSlotOptions(selected) {
+  const slots = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const h12  = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      const label = String(h12).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+      slots.push(`<option value="${label}"${selected===label?' selected':''}>${label}</option>`);
+    }
+  }
+  return '<option value="">— Select —</option>' + slots.join('');
+}
+
+function _timeSelect(id, selected, style) {
+  return `<select id="${id}" style="${style||'padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Outfit,sans-serif;font-size:13px;outline:none;background:var(--surface);'}">${_timeSlotOptions(selected)}</select>`;
 }
 
 // ─── BROKER SELECTOR ─────────────────────────────────────────
@@ -1511,7 +1554,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.6.0 | build: 202604142100 -->
+    <!-- version: 2.14.0 | build: 202604200900 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -1544,21 +1587,22 @@ function _bkModalHtml(q) {
           </div>
         </div>
         <div class="bk-ab-divider"><span>or enter manually</span></div>
-        <div class="bk-row bk-row-2">
-          <div class="bk-field"><label>Company / Facility</label><input type="text" id="bkOriginCompany" placeholder="ABC Warehouse"></div>
-          <div class="bk-field"><label>Address</label><input type="text" id="bkOriginAddr" placeholder="123 Main St"></div>
+        <div style="display:grid;grid-template-columns:140px 1fr;gap:8px 14px;align-items:center;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Company / Facility</label><input type="text" id="bkOriginCompany" placeholder="ABC Warehouse" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Address</label><input type="text" id="bkOriginAddr" placeholder="123 Main St" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">City</label><input type="text" id="bkOriginCity" placeholder="Los Angeles" oninput="_markManual('bkOriginCity')" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">State</label><input type="text" id="bkOriginState" placeholder="CA" maxlength="2" oninput="_markManual('bkOriginState')" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">ZIP <span id="bkOriginZipSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span></label>
+          <input type="text" id="bkOriginZip" placeholder="90001" maxlength="10" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;"
+            onchange="lookupZip(this.value,'bkOriginCity','bkOriginState','bkOriginZipSpin')"
+            onkeyup="if(this.value.length===5)lookupZip(this.value,'bkOriginCity','bkOriginState','bkOriginZipSpin')">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Pickup Hours</label>
+          <div style="display:flex;gap:8px;align-items:center;">${_timeSelect('bkOriginPickupFrom','')}<span style="color:var(--ink3);font-size:12px;">to</span>${_timeSelect('bkOriginPickupTo','')}</div>
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Pickup Contact</label><input type="text" id="bkOriginContact" placeholder="Contact name" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Contact Phone</label><input type="text" id="bkOriginPhone" placeholder="(555) 000-0000" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Pickup Ref #</label><input type="text" id="bkOriginRef" placeholder="PO / Ref number" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
         </div>
-        <div class="bk-row bk-row-3">
-          <div class="bk-field"><label>City</label><input type="text" id="bkOriginCity" placeholder="Los Angeles" oninput="_markManual('bkOriginCity')"></div>
-          <div class="bk-field"><label>State</label><input type="text" id="bkOriginState" placeholder="CA" maxlength="2" oninput="_markManual('bkOriginState')"></div>
-          <div class="bk-field">
-            <label>ZIP <span id="bkOriginZipSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label>
-            <input type="text" id="bkOriginZip" placeholder="90001" maxlength="10"
-              onchange="lookupZip(this.value,'bkOriginCity','bkOriginState','bkOriginZipSpin')"
-              onkeyup="if(this.value.length===5)lookupZip(this.value,'bkOriginCity','bkOriginState','bkOriginZipSpin')">
-          </div>
-        </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:4px;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:10px;cursor:pointer;">
           <input type="checkbox" id="bkOriginDefault" style="accent-color:#0A2540;width:14px;height:14px;">
           Set as your Default Origin
         </label>
@@ -1576,21 +1620,22 @@ function _bkModalHtml(q) {
           </div>
         </div>
         <div class="bk-ab-divider"><span>or enter manually</span></div>
-        <div class="bk-row bk-row-2">
-          <div class="bk-field"><label>Company / Facility</label><input type="text" id="bkDestCompany" placeholder="XYZ Distribution"></div>
-          <div class="bk-field"><label>Address</label><input type="text" id="bkDestAddr" placeholder="456 Oak Ave"></div>
+        <div style="display:grid;grid-template-columns:140px 1fr;gap:8px 14px;align-items:center;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Company / Facility</label><input type="text" id="bkDestCompany" placeholder="XYZ Distribution" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Address</label><input type="text" id="bkDestAddr" placeholder="456 Oak Ave" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">City</label><input type="text" id="bkDestCity" placeholder="Chicago" oninput="_markManual('bkDestCity')" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">State</label><input type="text" id="bkDestState" placeholder="IL" maxlength="2" oninput="_markManual('bkDestState')" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">ZIP <span id="bkDestZipSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span></label>
+          <input type="text" id="bkDestZip" placeholder="60601" maxlength="10" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;"
+            onchange="lookupZip(this.value,'bkDestCity','bkDestState','bkDestZipSpin')"
+            onkeyup="if(this.value.length===5)lookupZip(this.value,'bkDestCity','bkDestState','bkDestZipSpin')">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Delivery Hours</label>
+          <div style="display:flex;gap:8px;align-items:center;">${_timeSelect('bkDestDeliveryFrom','')}<span style="color:var(--ink3);font-size:12px;">to</span>${_timeSelect('bkDestDeliveryTo','')}</div>
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Delivery Contact</label><input type="text" id="bkDestContact" placeholder="Contact name" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Contact Phone</label><input type="text" id="bkDestPhone" placeholder="(555) 000-0000" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);">Delivery Ref #</label><input type="text" id="bkDestRef" placeholder="PO / Ref number" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;">
         </div>
-        <div class="bk-row bk-row-3">
-          <div class="bk-field"><label>City</label><input type="text" id="bkDestCity" placeholder="Chicago" oninput="_markManual('bkDestCity')"></div>
-          <div class="bk-field"><label>State</label><input type="text" id="bkDestState" placeholder="IL" maxlength="2" oninput="_markManual('bkDestState')"></div>
-          <div class="bk-field">
-            <label>ZIP <span id="bkDestZipSpin" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;margin-left:4px;"></span></label>
-            <input type="text" id="bkDestZip" placeholder="60601" maxlength="10"
-              onchange="lookupZip(this.value,'bkDestCity','bkDestState','bkDestZipSpin')"
-              onkeyup="if(this.value.length===5)lookupZip(this.value,'bkDestCity','bkDestState','bkDestZipSpin')">
-          </div>
-        </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:4px;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:10px;cursor:pointer;">
           <input type="checkbox" id="bkDestDefault" style="accent-color:#0A2540;width:14px;height:14px;">
           Set as your Default Destination
         </label>
@@ -1686,21 +1731,29 @@ function bkPopulateAbDropdowns() {
 function bkApplyAbOrigin(idx) {
   if (idx === '') return;
   const e = _abEntries[parseInt(idx)]; if (!e) return;
-  _bkSetField('bkOriginCompany', e.companyName || '');
+  _bkSetField('bkOriginCompany', e.companyName  || '');
   _bkSetField('bkOriginAddr',    e.addressLine1 || (e.addressLine2 || ''));
-  _bkSetField('bkOriginCity',    e.city  || '');
-  _bkSetField('bkOriginState',   e.state || '');
+  _bkSetField('bkOriginCity',    e.city   || '');
+  _bkSetField('bkOriginState',   e.state  || '');
   _bkSetField('bkOriginZip',     e.zipCode || '');
+  _bkSetField('bkOriginContact', e.contactPerson || '');
+  _bkSetField('bkOriginPhone',   e.phone  || '');
+  const pf = document.getElementById('bkOriginPickupFrom'); if (pf) pf.value = e.pickupFrom  || '';
+  const pt = document.getElementById('bkOriginPickupTo');   if (pt) pt.value = e.pickupTo    || '';
 }
 
 function bkApplyAbDest(idx) {
   if (idx === '') return;
   const e = _abEntries[parseInt(idx)]; if (!e) return;
-  _bkSetField('bkDestCompany', e.companyName || '');
+  _bkSetField('bkDestCompany', e.companyName  || '');
   _bkSetField('bkDestAddr',    e.addressLine1 || (e.addressLine2 || ''));
-  _bkSetField('bkDestCity',    e.city  || '');
-  _bkSetField('bkDestState',   e.state || '');
+  _bkSetField('bkDestCity',    e.city   || '');
+  _bkSetField('bkDestState',   e.state  || '');
   _bkSetField('bkDestZip',     e.zipCode || '');
+  _bkSetField('bkDestContact', e.contactPerson || '');
+  _bkSetField('bkDestPhone',   e.phone  || '');
+  const df = document.getElementById('bkDestDeliveryFrom'); if (df) df.value = e.deliveryFrom || '';
+  const dt = document.getElementById('bkDestDeliveryTo');   if (dt) dt.value = e.deliveryTo   || '';
 }
 
 function _bkSetField(id, val) {
@@ -1837,8 +1890,16 @@ async function submitBooking() {
     items,
     originCompany: gv('bkOriginCompany'), originAddress: gv('bkOriginAddr'),
     originCity:    gv('bkOriginCity'),    originState:   gv('bkOriginState'),  originZip,
+    originPickupFrom: document.getElementById('bkOriginPickupFrom')?.value || '',
+    originPickupTo:   document.getElementById('bkOriginPickupTo')?.value   || '',
+    originContact: gv('bkOriginContact'), originPhone:   gv('bkOriginPhone'),
+    originRef:     gv('bkOriginRef'),
     destCompany:   gv('bkDestCompany'),   destAddress:   gv('bkDestAddr'),
-    destCity:      gv('bkDestCity'),      destState:     gv('bkDestState'),     destZip
+    destCity:      gv('bkDestCity'),      destState:     gv('bkDestState'),     destZip,
+    destDeliveryFrom: document.getElementById('bkDestDeliveryFrom')?.value || '',
+    destDeliveryTo:   document.getElementById('bkDestDeliveryTo')?.value   || '',
+    destContact:   gv('bkDestContact'),   destPhone:     gv('bkDestPhone'),
+    destRef:       gv('bkDestRef')
   };
 
   const r = await api(payload);
@@ -3546,7 +3607,9 @@ async function showBrokerQuotePage(requestId, brokerEmail, brokerId, sig) {
       <input type="date" id="bqValid" style="width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;color:#111827;outline:none;box-sizing:border-box;">
     </div>
 
-    <button id="bqBtn" onclick="submitBrokerQuoteFromPage('${esc(requestId)}','${esc(brokerEmail)}','${esc(bCo)}')"
+    <button id="bqBtn"
+      data-rid="${esc(requestId)}" data-bem="${esc(brokerEmail)}" data-bco="${esc(bCo)}"
+      onclick="submitBrokerQuoteFromPage(this.dataset.rid,this.dataset.bem,this.dataset.bco)"
       style="width:100%;padding:16px;background:#FF6200;color:white;border:none;border-radius:16px;font-size:16px;font-weight:600;cursor:pointer;">
       Submit Quote →
     </button>`;
