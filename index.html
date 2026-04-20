@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.15.0 | build: 202604200930 -->
+<!-- version: 2.15.1 | build: 202604200945 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.15.0 — 202604200930';
+  out.textContent = 'v2.15.1 — 202604200945';
 }
 
 async function sendOTP() {
@@ -811,7 +811,7 @@ async function loadClient() {
           <div class="ff"><label>Weight (lbs)</label><input type="number" id="fW" placeholder="20000"></div>
           <div class="ff"><label>Pickup Date (optional)</label><input type="date" id="fPD"></div>
           <div class="ff"><label>Quotes Needed By <span style="font-weight:400;color:var(--ink3);">(optional deadline for brokers)</span></label><input type="datetime-local" id="fQNB"></div>
-          <div class="ff span-2"><label>Notes (optional)</label><textarea id="fN" placeholder="Special handling, hazmat, temperature requirements…"></textarea></div>
+          <div class="ff span-2"><label>Notes (optional)</label><textarea id="fN" placeholder="2 pallets with 1,400 lbs each, pallet dims 48 x 40 x 40 inch&#10;Special handling, hazmat, temperature requirements…"></textarea></div>
           <div class="ff span-2">
             <label>Pickup &amp; Delivery Accessories <span style="font-weight:400;color:var(--ink3);">(select all that apply)</span></label>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
@@ -1602,7 +1602,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.15.0 | build: 202604200930 -->
+    <!-- version: 2.15.1 | build: 202604200945 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -2124,7 +2124,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.15.0 | build: 202604200930 -->
+    <!-- version: 2.15.1 | build: 202604200945 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
