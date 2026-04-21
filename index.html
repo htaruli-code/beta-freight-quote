@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.15.3 | build: 202604201100 -->
+<!-- version: 2.15.4 | build: 202604201130 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.15.3 — 202604201100';
+  out.textContent = 'v2.15.4 — 202604201130';
 }
 
 async function sendOTP() {
@@ -583,7 +583,7 @@ function backToEmail() { sw('ls2','ls1'); document.getElementById('otpCode').val
 
 function logout() {
   localStorage.removeItem('fq'); S = {email:'',token:'',role:''};
-  _abEntries = []; _abLoaded = false;
+  _abEntries = []; _abLoaded = false; _bookingsCache = { client: null, broker: null, admin: null };
   document.getElementById('appScreen').classList.remove('active');
   document.getElementById('loginScreen').classList.add('active');
   sw('ls2','ls1');
@@ -975,6 +975,7 @@ async function submitRequest() {
 // ─── ADDRESS BOOK ─────────────────────────────────────────────
 let _abEntries = [];
 let _abLoaded  = false;
+let _bookingsCache = { client: null, broker: null, admin: null };
 
 async function loadAddressBook() {
   const el = document.getElementById('p-clientAddrBook');
@@ -1607,7 +1608,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.15.3 | build: 202604201100 -->
+    <!-- version: 2.15.4 | build: 202604201130 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -1959,6 +1960,7 @@ async function submitBooking() {
   if (btn) { btn.disabled = false; btn.textContent = 'Submit Load Details →'; }
 
   if (r.success) {
+    _bookingsCache.client = null; // invalidate cache
     closeBookingModal();
     loadClientDash().then(() => {
       const wrap = document.getElementById('clientReqWrap');
@@ -2005,6 +2007,13 @@ async function loadBookingsPanel(role) {
                 : 'p-clientBookings';
   const el = document.getElementById(panelId);
   if (!el) return;
+
+  // Use cache if available
+  if (_bookingsCache[role]) {
+    renderBookingsPanel(el, role, _bookingsCache[role]);
+    return;
+  }
+
   el.innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
 
   let r;
@@ -2021,7 +2030,11 @@ async function loadBookingsPanel(role) {
     return;
   }
 
-  const allBookings = r.bookings || [];
+  _bookingsCache[role] = r.bookings || [];
+  renderBookingsPanel(el, role, _bookingsCache[role]);
+}
+
+function renderBookingsPanel(el, role, allBookings) {
   const pageSize    = 20;
   let   curPage     = 1;
 
@@ -2063,11 +2076,9 @@ async function loadBookingsPanel(role) {
       const origin = [b.originCity, b.originState, b.originZip].filter(Boolean).join(', ') || b.originZip || '—';
       const dest   = [b.destCity,   b.destState,   b.destZip  ].filter(Boolean).join(', ') || b.destZip   || '—';
       const rowBg  = i % 2 === 0 ? '' : 'background:var(--surface2);';
-      let   items  = [];
-      try { items = JSON.parse(b.items || '[]'); } catch(e) {}
-      const itemSummary = items.length
-        ? `${items.length} item${items.length>1?'s':''}, ${items.reduce((s,it)=>(s+(parseFloat(it.weight)||0)*(parseInt(it.qty)||1)),0).toLocaleString()} lb total`
-        : (b.items && b.items !== '[]' ? b.items.substring(0,60) : '');
+      // Lightweight item count — avoid JSON.parse on every row
+      const itemCount = b.items && b.items !== '[]' ? (b.items.match(/"qty"/g)||[]).length : 0;
+      const itemSummary = itemCount > 0 ? `${itemCount} item${itemCount>1?'s':''}` : '';
 
       h += `<tr style="${rowBg}border-bottom:1px solid var(--border);">
         <td style="padding:12px 14px;font-family:monospace;font-size:12px;font-weight:700;color:var(--blue);white-space:nowrap;">${esc(b.bookingId)}</td>
@@ -2129,7 +2140,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.15.3 | build: 202604201100 -->
+    <!-- version: 2.15.4 | build: 202604201130 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
