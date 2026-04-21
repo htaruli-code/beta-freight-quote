@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.15.2 | build: 202604201030 -->
+<!-- version: 2.15.3 | build: 202604201100 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.15.2 — 202604201030';
+  out.textContent = 'v2.15.3 — 202604201100';
 }
 
 async function sendOTP() {
@@ -1329,9 +1329,9 @@ async function loadClientDash() {
       </div>
     </div>` : '';
 
-  // Map quoteId → bookingId for "View Booking" button
+  // Map quoteId → full booking object for "View Load" button
   const bookedMap = {};
-  if (rb.success) (rb.bookings||[]).forEach(b => { bookedMap[b.quoteId] = b.bookingId; });
+  if (rb.success) (rb.bookings||[]).forEach(b => { bookedMap[b.quoteId] = b; });
 
   if (!r.requests.length) {
     document.getElementById('p-clientDash').innerHTML = `${orgNudge}<div class="empty"><h3>No requests yet</h3><p>Submit your first freight request to get started.</p></div>`;
@@ -1415,7 +1415,7 @@ async function loadClientDash() {
                   <button class="btn-reject" onclick="respondQuote('${q.quoteId}','reject',this)">✕ Reject</button>
                 </div>`:''}
                 ${q.status==='accepted'?(alreadyBooked
-                  ? `<button onclick="setNav(document.getElementById('n-clientBookings'),'clientBookings')" style="padding:8px 16px;border-radius:8px;border:1.5px solid #0A2540;background:transparent;color:#0A2540;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='var(--blue-bg)'" onmouseout="this.style.background='transparent'">📂 View Load</button>`
+                  ? `<button onclick="showBookingDetail(${JSON.stringify(alreadyBooked).replace(/"/g,'&quot;')})" style="padding:8px 16px;border-radius:8px;border:1.5px solid #0A2540;background:transparent;color:#0A2540;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='var(--blue-bg)'" onmouseout="this.style.background='transparent'">📂 View Load</button>`
                   : `<button onclick="openBookingModal('${q.quoteId}',${JSON.stringify({origin:req.origin,originZip:req.originZip,destination:req.destination,destZip:req.destZip,freightType:req.freightType,weight:req.weight,brokerCompany:q.brokerCompany,carrierName:q.carrierName||'',rate:q.rate,quoteId:q.quoteId}).replace(/"/g,'&quot;')})" style="padding:8px 16px;border-radius:8px;border:none;background:#0A2540;color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='#0d2f52'" onmouseout="this.style.background='#0A2540'">📋 Submit Load Details</button>`)
                 :''}
               </div>
@@ -1607,7 +1607,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.15.2 | build: 202604201030 -->
+    <!-- version: 2.15.3 | build: 202604201100 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -2129,7 +2129,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.15.2 | build: 202604201030 -->
+    <!-- version: 2.15.3 | build: 202604201100 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
