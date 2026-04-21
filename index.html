@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.15.4 | build: 202604201130 -->
+<!-- version: 2.15.5 | build: 202604201200 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.15.4 — 202604201130';
+  out.textContent = 'v2.15.5 — 202604201200';
 }
 
 async function sendOTP() {
@@ -583,7 +583,7 @@ function backToEmail() { sw('ls2','ls1'); document.getElementById('otpCode').val
 
 function logout() {
   localStorage.removeItem('fq'); S = {email:'',token:'',role:''};
-  _abEntries = []; _abLoaded = false; _bookingsCache = { client: null, broker: null, admin: null };
+  _abEntries = []; _abLoaded = false; _bookingsCache = { client: null, broker: null, admin: null }; _clientDashCache = null;
   document.getElementById('appScreen').classList.remove('active');
   document.getElementById('loginScreen').classList.add('active');
   sw('ls2','ls1');
@@ -960,6 +960,7 @@ async function submitRequest() {
   const r = await api(payload);
   btn.disabled = false; btn.textContent = 'Send to Brokers →';
   if (r.success) {
+    _clientDashCache = null; // invalidate so next visit reloads
     msg('reqMsg','✓ Request sent! Brokers have been notified.','success');
     msg('reqMsgBottom','✓ Request sent! Brokers have been notified.','success');
     ['fO','fOZ','fD','fDZ','fW','fN','fQNB'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -976,6 +977,7 @@ async function submitRequest() {
 let _abEntries = [];
 let _abLoaded  = false;
 let _bookingsCache = { client: null, broker: null, admin: null };
+let _clientDashCache = null; // { requests, profile }
 
 async function loadAddressBook() {
   const el = document.getElementById('p-clientAddrBook');
@@ -1307,10 +1309,19 @@ async function removeCustomBroker(id, btn) {
 
 async function loadClientDash() {
   document.getElementById('p-clientDash').innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
-  const [r, rb] = await Promise.all([
-    api({action:'getClientData',    email:S.email, token:S.token}),
-    api({action:'getClientBookings', email:S.email, token:S.token})
-  ]);
+
+  let r, rb;
+  if (_clientDashCache && _bookingsCache.client) {
+    r  = _clientDashCache;
+    rb = { success: true, bookings: _bookingsCache.client };
+  } else {
+    [r, rb] = await Promise.all([
+      api({action:'getClientData',    email:S.email, token:S.token}),
+      api({action:'getClientBookings', email:S.email, token:S.token})
+    ]);
+    if (r.success)  _clientDashCache    = r;
+    if (rb.success) _bookingsCache.client = rb.bookings || [];
+  }
   if (!r.success) { document.getElementById('p-clientDash').innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
 
   const noOrg = !(r.profile && r.profile.orgId);
@@ -1448,7 +1459,7 @@ async function respondQuote(quoteId, quoteAction, btn) {
   payload.quoteId   = quoteId;
   payload.quoteAction = quoteAction;
   const r = await api(payload);
-  if (r.success) loadClientDash();
+  if (r.success) { _clientDashCache = null; loadClientDash(); }
   else { btn.disabled = false; btn.textContent = orig; alert(r.error); }
 }
 
@@ -1608,7 +1619,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.15.4 | build: 202604201130 -->
+    <!-- version: 2.15.5 | build: 202604201200 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -1960,7 +1971,8 @@ async function submitBooking() {
   if (btn) { btn.disabled = false; btn.textContent = 'Submit Load Details →'; }
 
   if (r.success) {
-    _bookingsCache.client = null; // invalidate cache
+    _bookingsCache.client = null;
+    _clientDashCache = null; // invalidate so bookedMap refreshes
     closeBookingModal();
     loadClientDash().then(() => {
       const wrap = document.getElementById('clientReqWrap');
@@ -2140,7 +2152,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.15.4 | build: 202604201130 -->
+    <!-- version: 2.15.5 | build: 202604201200 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
