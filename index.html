@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.15.5 | build: 202604201200 -->
+<!-- version: 2.16.0 | build: 202604201300 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +551,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.15.5 — 202604201200';
+  out.textContent = 'v2.16.0 — 202604201300';
 }
 
 async function sendOTP() {
@@ -583,7 +583,7 @@ function backToEmail() { sw('ls2','ls1'); document.getElementById('otpCode').val
 
 function logout() {
   localStorage.removeItem('fq'); S = {email:'',token:'',role:''};
-  _abEntries = []; _abLoaded = false; _bookingsCache = { client: null, broker: null, admin: null }; _clientDashCache = null;
+  _abEntries = []; _abLoaded = false; _bookingsCache = { client: null, broker: null, admin: null }; _clientDashCache = null; _profileCache = null;
   document.getElementById('appScreen').classList.remove('active');
   document.getElementById('loginScreen').classList.add('active');
   sw('ls2','ls1');
@@ -977,7 +977,8 @@ async function submitRequest() {
 let _abEntries = [];
 let _abLoaded  = false;
 let _bookingsCache = { client: null, broker: null, admin: null };
-let _clientDashCache = null; // { requests, profile }
+let _clientDashCache = null;
+let _profileCache = null; // { profile }
 
 async function loadAddressBook() {
   const el = document.getElementById('p-clientAddrBook');
@@ -1619,7 +1620,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.15.5 | build: 202604201200 -->
+    <!-- version: 2.16.0 | build: 202604201300 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -2152,7 +2153,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.15.5 | build: 202604201200 -->
+    <!-- version: 2.16.0 | build: 202604201300 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
@@ -3087,7 +3088,16 @@ document.addEventListener('click', e => { if (e.target.classList.contains('modal
 // ─── UTILS ────────────────────────────────────────────────────
 
 async function api(d) {
-  try { const r = await fetch(API, {method:'POST', body:JSON.stringify(d)}); return await r.json(); }
+  try {
+    const r = await fetch(API, {method:'POST', body:JSON.stringify(d)});
+    const j = await r.json();
+    if (!j.success && j.error && j.error.includes('Session expired')) {
+      logout();
+      msg('loginMsg', 'Your session has expired. Please log in again.', 'error');
+      return j;
+    }
+    return j;
+  }
   catch(e) { return {success:false, error:'Network error.'}; }
 }
 
@@ -3145,9 +3155,16 @@ function paginationBar(page, totalPages, totalRecords, callbackName) {
 async function loadClientSettings(showMsg) {
   const el = document.getElementById('p-clientSettings');
   if (!el) return;
-  el.innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
-  const r = await api({action:'getUserProfile', email:S.email, token:S.token});
-  if (!r.success) { el.innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
+
+  let r;
+  if (_profileCache && !showMsg) {
+    r = _profileCache;
+  } else {
+    el.innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin" style="width:20px;height:20px;"></span></div>';
+    r = await api({action:'getUserProfile', email:S.email, token:S.token});
+    if (!r.success) { el.innerHTML = `<div class="alert alert-error">${r.error}</div>`; return; }
+    _profileCache = r;
+  }
   const p = r.profile || {};
   window._clientOrgId   = p.orgId   || '';
   window._clientOrgRole = p.orgRole || '';
@@ -3374,6 +3391,7 @@ async function saveProfile() {
   const r = await api({action:'saveUserProfile', email:S.email, token:S.token, profile});
   resetBtn('saveProfileBtn','Save Profile');
   if (r.success) {
+    _profileCache = null;
     userTz = profile.timezone || '';
     msg('profileMsg','✓ Profile saved successfully.','success');
     ['pFirst','pLast','pPhone'].forEach(id => { const el=document.getElementById(id); if(el) el.style.borderColor=''; });
