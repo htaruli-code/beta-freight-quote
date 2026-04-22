@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- version: 2.17.0 | build: 202604210900 -->
+<!-- version: 2.17.1 | build: 202604211000 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -553,7 +553,7 @@ let appSettings = {};
 function runDiag() {
   const out = document.getElementById('debugOut');
   out.style.display = 'block';
-  out.textContent = 'v2.17.0 — 202604210900';
+  out.textContent = 'v2.17.1 — 202604211000';
 }
 
 async function sendOTP() {
@@ -1628,7 +1628,7 @@ async function _loadAbForBooking() {
 function _bkModalHtml(q) {
   return `
   <div class="bk-modal">
-    <!-- version: 2.17.0 | build: 202604210900 -->
+    <!-- version: 2.17.1 | build: 202604211000 -->
     <div class="bk-header">
       <div>
         <h2>📋 Submit Load Details</h2>
@@ -2161,7 +2161,7 @@ function showBookingDetail(b) {
   overlay.className = 'bk-overlay';
   overlay.innerHTML = `
   <div class="bk-modal" style="max-width:640px;">
-    <!-- version: 2.17.0 | build: 202604210900 -->
+    <!-- version: 2.17.1 | build: 202604211000 -->
     <div class="bk-header">
       <div>
         <h2>📦 Load Detail</h2>
@@ -3063,9 +3063,14 @@ async function loadFeedbackPanel() {
           <select onchange="fbUpdateStatus('${esc(fb.feedbackId)}',this.value)" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;">
             ${['Open','In Progress','Resolved'].map(s=>`<option${fb.status===s?' selected':''}>${s}</option>`).join('')}
           </select>
-          <input type="text" id="fb-note-${esc(fb.feedbackId)}" value="${esc(fb.adminNote||'')}" placeholder="Add note…" style="flex:1;min-width:200px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;outline:none;">
+          <input type="text" id="fb-note-${esc(fb.feedbackId)}" value="${esc(fb.adminNote||'')}" placeholder="Internal note (not sent to user)…" style="flex:1;min-width:200px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;outline:none;">
           <button onclick="fbSaveNote('${esc(fb.feedbackId)}')" style="padding:6px 14px;border:none;background:#0A2540;color:white;border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Save Note</button>
           ${fb.feedbackId ? `<span style="font-size:10px;color:var(--ink3);font-family:monospace;">${esc(fb.feedbackId)}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+          <input type="text" id="fb-reply-${esc(fb.feedbackId)}" value="${esc(fb.replyMessage||'')}" placeholder="Reply to submitter (sends email)…" style="flex:1;min-width:200px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;outline:none;">
+          <button onclick="fbSendReply('${esc(fb.feedbackId)}')" style="padding:6px 14px;border:none;background:var(--green);color:white;border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">✉️ Send Reply</button>
+          ${fb.repliedAt ? `<span style="font-size:11px;color:var(--green);">✓ Replied ${fdt(fb.repliedAt)}</span>` : ''}
         </div>
       </div>`;
     });
@@ -3084,6 +3089,19 @@ async function loadFeedbackPanel() {
     const item = items.find(i => i.feedbackId === id);
     await api({action:'adminUpdateFeedback', email:S.email, token:S.token, feedbackId:id, status: item?.status || 'Open', adminNote: note});
     if (item) item.adminNote = note;
+  };
+  window.fbSendReply = async (id) => {
+    const replyMsg = document.getElementById('fb-reply-' + id)?.value.trim();
+    if (!replyMsg) return;
+    const btn = document.querySelector(`[onclick="fbSendReply('${id}')"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    const r2 = await api({action:'adminReplyFeedback', email:S.email, token:S.token, feedbackId:id, replyMessage:replyMsg});
+    if (btn) { btn.disabled = false; btn.textContent = '✉️ Send Reply'; }
+    if (r2.success) {
+      const item = items.find(i => i.feedbackId === id);
+      if (item) { item.replyMessage = replyMsg; item.repliedAt = new Date().toISOString(); }
+      render(activeFilter);
+    }
   };
   render('All');
 }
